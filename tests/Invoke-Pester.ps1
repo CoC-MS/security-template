@@ -3,16 +3,21 @@ param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$requiredVersion = [version]'5.7.1'
-$available = Get-Module -ListAvailable -Name Pester |
-    Where-Object Version -EQ $requiredVersion |
-    Select-Object -First 1
+$requiredVersion = [version]'5.9.0'
+$available = @(
+    Get-Module -ListAvailable -Name Pester |
+        Where-Object Version -EQ $requiredVersion
+)
 
-if ($null -eq $available) {
+if ($available.Count -lt 1) {
     throw "Pester $requiredVersion is required exactly and was not found. No module was installed automatically."
 }
 
-Import-Module $available.Path -Force
+Import-Module Pester -RequiredVersion $requiredVersion -Force
+$imported = Get-Module -Name Pester
+if ($null -eq $imported -or [version]$imported.Version -ne $requiredVersion) {
+    throw "Imported Pester version '$($imported.Version)' does not match required version '$requiredVersion'."
+}
 $configuration = New-PesterConfiguration
 $configuration.Run.Path = Join-Path $PSScriptRoot 'PublicPublication.Tests.ps1'
 $configuration.Run.PassThru = $true
