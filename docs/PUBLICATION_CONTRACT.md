@@ -83,6 +83,9 @@ bundle remain unchanged in the tree and catalog. Every deleted generated path mu
 a `generated-manifest.json` removal event containing the artifact ID, prior
 version, accountable owner, reason, and effective date. Reviewers must specifically approve
 generated-path deletions. Removed IDs cannot be reused.
+The public validator compares removal IDs and prior versions with metadata from
+the protected base revision, and rejects duplicate, fabricated, or unused
+removal events. `catalog.json` and `generated-manifest.json` cannot be deleted.
 
 ## Deterministic publication
 
@@ -132,5 +135,7 @@ these report headings:
 
 Use `None` under Removals when no artifacts are removed. The report describes
 public outcomes only and must not reveal internal repository, workflow, tenant,
-or operator details. Independent public-repository validation recomputes all
+or operator details. The same leakage and public-link checks applied to
+generated files also apply to the pull request title and body. Independent
+public-repository validation recomputes all
 checksums and does not trust an internal validation result.

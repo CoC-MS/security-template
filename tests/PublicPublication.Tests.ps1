@@ -83,4 +83,9 @@ Describe 'Public publication validator' {
         $catalog | ConvertTo-Json -Depth 20 | Set-Content $catalogPath -Encoding utf8NoBOM
         Invoke-TestValidator $path | Should -Not -Be 0
     }
+
+    It 'passes git-backed ownership, deletion, orphan, removal, and PR leakage regressions' {
+        & $script:Pwsh -NoLogo -NoProfile -File (Join-Path $PSScriptRoot 'Invoke-SelfTest.ps1') *> $null
+        $LASTEXITCODE | Should -Be 0
+    }
 }

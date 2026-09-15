@@ -23,25 +23,102 @@ function Invoke-ValidatorCase {
     param(
         [string]$Name,
         [bool]$ShouldPass,
-        [scriptblock]$Mutate
+        [scriptblock]$Mutate,
+        [string]$ExpectedMessage
     )
     $script:testsRun++
     $path = New-FixtureCopy
     try {
         if ($Mutate) { & $Mutate $path }
-        & $pwsh -NoLogo -NoProfile -File $validator `
+        $output = & $pwsh -NoLogo -NoProfile -File $validator `
             -RepositoryRoot $path `
             -ValidationMode Snapshot `
             -SchemaRoot $schemas `
-            -PolicyPath $policy *> $null
+            -PolicyPath $policy 2>&1 | Out-String
         $passed = $LASTEXITCODE -eq 0
         if ($passed -ne $ShouldPass) {
-            throw "Case '$Name' expected pass=$ShouldPass but validator exit code was $LASTEXITCODE."
+            throw "Case '$Name' expected pass=$ShouldPass but validator exit code was $LASTEXITCODE. Output: $output"
+        }
+        if ($ExpectedMessage -and $output -notmatch [regex]::Escape($ExpectedMessage)) {
+            throw "Case '$Name' did not report '$ExpectedMessage'. Output: $output"
         }
         Write-Host "PASS: $Name"
     }
     finally {
         Remove-Item -LiteralPath $path -Recurse -Force
+    }
+}
+
+function Write-Utf8Lf {
+    param(
+        [string]$Path,
+        [string]$Content
+    )
+    $utf8 = [Text.UTF8Encoding]::new($false)
+    [IO.File]::WriteAllText($Path, $Content.Replace("`r`n", "`n").Replace("`r", "`n"), $utf8)
+}
+
+function New-PullRequestRepository {
+    $path = New-FixtureCopy
+    Write-Utf8Lf (Join-Path $path 'governance-source.md') "Synthetic governance source.`n"
+    & git -C $path init --quiet
+    & git -C $path config core.autocrlf false
+    & git -C $path config user.email 'validator@example.invalid'
+    & git -C $path config user.name 'Publication Validator Test'
+    & git -C $path add --all
+    & git -C $path commit --quiet -m 'base'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to create temporary base commit.' }
+    return [ordered]@{
+        Path = $path
+        Base = (& git -C $path rev-parse HEAD)
+    }
+}
+
+function Invoke-PullRequestCase {
+    param(
+        [string]$Name,
+        [scriptblock]$Mutate,
+        [string]$ExpectedMessage,
+        [string]$Title = '[Generated publication] Synthetic validation',
+        [string]$Body = "<!-- generated-publication -->`n## Publication summary`nSynthetic test`n## Artifacts`nSynthetic test`n## Removals`nNone`n## Validation`nSynthetic test"
+    )
+    $script:testsRun++
+    $repository = New-PullRequestRepository
+    $eventPath = Join-Path ([IO.Path]::GetTempPath()) "publication-event-$([guid]::NewGuid().ToString('N')).json"
+    try {
+        if ($Mutate) {
+            & $Mutate $repository.Path
+            & git -C $repository.Path add --all
+            & git -C $repository.Path commit --quiet -m 'candidate'
+            if ($LASTEXITCODE -ne 0) { throw "Unable to commit mutation for '$Name'." }
+        }
+        $event = [ordered]@{
+            pull_request = [ordered]@{
+                title = $Title
+                body = $Body
+                head = [ordered]@{ ref = 'publication/synthetic-validation' }
+            }
+            sender = [ordered]@{ login = 'publisher[bot]' }
+        }
+        Write-Utf8Lf $eventPath (($event | ConvertTo-Json -Depth 10) + "`n")
+        $output = & $pwsh -NoLogo -NoProfile -File $validator `
+            -RepositoryRoot $repository.Path `
+            -ValidationMode PullRequest `
+            -BaseRef $repository.Base `
+            -EventPath $eventPath `
+            -SchemaRoot $schemas `
+            -PolicyPath $policy 2>&1 | Out-String
+        if ($LASTEXITCODE -eq 0) {
+            throw "Case '$Name' expected rejection but validator passed."
+        }
+        if ($output -notmatch [regex]::Escape($ExpectedMessage)) {
+            throw "Case '$Name' did not report '$ExpectedMessage'. Output: $output"
+        }
+        Write-Host "PASS: $Name"
+    }
+    finally {
+        if (Test-Path -LiteralPath $eventPath) { Remove-Item -LiteralPath $eventPath -Force }
+        Remove-Item -LiteralPath $repository.Path -Recurse -Force
     }
 }
 
@@ -95,6 +172,73 @@ Invoke-ValidatorCase -Name 'partial bundle cannot remove catalog entry' -ShouldP
     $catalog.artifacts = @()
     $catalog | ConvertTo-Json -Depth 20 | Set-Content $catalogPath -Encoding utf8NoBOM
 }
+
+Invoke-PullRequestCase -Name 'rename source ownership' `
+    -ExpectedMessage "hand-maintained path 'governance-source.md'" `
+    -Mutate {
+        param($path)
+        $destination = Join-Path $path 'templates\entra\conditional-access\synthetic-policy-fixture\deployment\governance-source.md'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+        & git -C $path mv governance-source.md $destination
+    }
+
+Invoke-PullRequestCase -Name 'deleting all generated roots' `
+    -ExpectedMessage 'Deleting catalog.json is prohibited' `
+    -Mutate {
+        param($path)
+        & git -C $path rm -r --quiet templates catalog.json generated-manifest.json
+    }
+
+Invoke-ValidatorCase -Name 'orphan deployment derives incomplete artifact root' `
+    -ShouldPass $false `
+    -ExpectedMessage "is missing required file 'template.json'" `
+    -Mutate {
+        param($path)
+        $orphan = Join-Path $path 'templates\entra\orphan-component\orphan-artifact\deployment'
+        New-Item -ItemType Directory -Path $orphan -Force | Out-Null
+        Write-Utf8Lf (Join-Path $orphan 'orphan.json') "{`n  `"fixtureOnly`": true`n}`n"
+    }
+
+Invoke-PullRequestCase -Name 'fabricated removal record' `
+    -ExpectedMessage "priorVersion '9.9.9' does not match protected-base version '1.0.0'" `
+    -Mutate {
+        param($path)
+        $manifestPath = Join-Path $path 'generated-manifest.json'
+        $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+        $manifest.removals = @(
+            [ordered]@{
+                id = 'synthetic-policy-fixture'
+                priorVersion = '9.9.9'
+                owner = 'Synthetic owner'
+                reason = 'Synthetic fabricated removal regression'
+                effectiveDate = '2026-01-01'
+            }
+        )
+        Write-Utf8Lf $manifestPath (($manifest | ConvertTo-Json -Depth 20) + "`n")
+    }
+
+Invoke-ValidatorCase -Name 'duplicate removal records' -ShouldPass $false -Mutate {
+    param($path)
+    $manifestPath = Join-Path $path 'generated-manifest.json'
+    $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+    $removal = [ordered]@{
+        id = 'synthetic-policy-fixture'
+        priorVersion = '1.0.0'
+        owner = 'Synthetic owner'
+        reason = 'Synthetic duplicate removal regression'
+        effectiveDate = '2026-01-01'
+    }
+    $manifest.removals = @($removal, $removal)
+    Write-Utf8Lf $manifestPath (($manifest | ConvertTo-Json -Depth 20) + "`n")
+}
+
+Invoke-PullRequestCase -Name 'pull request body leakage' `
+    -ExpectedMessage 'pull request body contains a prohibited email address' `
+    -Body "<!-- generated-publication -->`n## Publication summary`nContact operator@example.com at http://internal.example.internal/run`n## Artifacts`nSynthetic test`n## Removals`nNone`n## Validation`nSynthetic test"
+
+Invoke-PullRequestCase -Name 'pull request title leakage' `
+    -ExpectedMessage 'pull request title contains a prohibited tenant domain' `
+    -Title '[Generated publication] tenant-name.onmicrosoft.com'
 
 if ($testsRun -le 0) {
     throw 'Self-test executed zero cases.'

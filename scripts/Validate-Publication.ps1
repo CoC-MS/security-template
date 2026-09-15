@@ -289,9 +289,11 @@ function Test-ScriptSafety {
 function Get-PullRequestContext {
     $context = [ordered]@{
         IsGenerated = $false
+        Title = ''
         Body = ''
         Changed = @()
         Deleted = @()
+        Touched = @()
     }
     if ($ValidationMode -eq 'Snapshot') {
         return $context
@@ -302,6 +304,7 @@ function Get-PullRequestContext {
             $event = Get-Content -LiteralPath $EventPath -Raw | ConvertFrom-Json -Depth 20
             if ($null -ne $event.pull_request) {
                 $title = [string]$event.pull_request.title
+                $context.Title = $title
                 $context.Body = [string]$event.pull_request.body
                 $actor = [string]$event.sender.login
                 $head = [string]$event.pull_request.head.ref
@@ -325,6 +328,7 @@ function Get-PullRequestContext {
             }
             $changed = [System.Collections.Generic.List[string]]::new()
             $deleted = [System.Collections.Generic.List[string]]::new()
+            $touched = [System.Collections.Generic.List[string]]::new()
             foreach ($line in $nameStatus) {
                 $parts = $line -split "`t"
                 if ($parts.Count -lt 2) { continue }
@@ -332,11 +336,17 @@ function Get-PullRequestContext {
                 $path = if ($status.StartsWith('R')) { $parts[2] } else { $parts[1] }
                 $path = $path.Replace('\', '/')
                 $changed.Add($path)
+                $touched.Add($path)
                 if ($status -eq 'D') { $deleted.Add($path) }
-                if ($status.StartsWith('R')) { $deleted.Add($parts[1].Replace('\', '/')) }
+                if ($status.StartsWith('R')) {
+                    $sourcePath = $parts[1].Replace('\', '/')
+                    $deleted.Add($sourcePath)
+                    $touched.Add($sourcePath)
+                }
             }
             $context.Changed = $changed.ToArray()
             $context.Deleted = $deleted.ToArray()
+            $context.Touched = $touched.ToArray()
         }
         catch {
             Add-Failure "Unable to determine pull request changes from '$BaseRef': $($_.Exception.Message)"
@@ -346,6 +356,41 @@ function Get-PullRequestContext {
         Add-Failure 'PullRequest validation requires -BaseRef.'
     }
     return $context
+}
+
+function Get-BasePublicationState {
+    $state = [ordered]@{
+        Files = @()
+        MetadataById = @{}
+        HasCatalog = $false
+        HasManifest = $false
+    }
+    if ($ValidationMode -ne 'PullRequest' -or [string]::IsNullOrWhiteSpace($BaseRef)) {
+        return $state
+    }
+    try {
+        $files = @(& git -C $RepositoryRoot ls-tree -r --name-only $BaseRef)
+        if ($LASTEXITCODE -ne 0) { throw "git ls-tree exited with code $LASTEXITCODE" }
+        $state.Files = @($files | ForEach-Object { $_.Replace('\', '/') })
+        $state.HasCatalog = $state.Files -ccontains 'catalog.json'
+        $state.HasManifest = $state.Files -ccontains 'generated-manifest.json'
+        foreach ($path in $state.Files) {
+            if ($path -notmatch '^templates/(?:intune|defender|purview|entra)/[^/]+/[^/]+/metadata\.json$') {
+                continue
+            }
+            $raw = (& git -C $RepositoryRoot show "${BaseRef}:$path") -join "`n"
+            if ($LASTEXITCODE -ne 0) { throw "git show failed for $path" }
+            $metadata = $raw | ConvertFrom-Json -Depth 100
+            $state.MetadataById[[string]$metadata.id] = [ordered]@{
+                Version = [string]$metadata.artifactVersion
+                Path = $path
+            }
+        }
+    }
+    catch {
+        Add-Failure "Unable to inspect protected base publication state '$BaseRef': $($_.Exception.Message)"
+    }
+    return $state
 }
 
 $RepositoryRoot = (Resolve-Path -LiteralPath $RepositoryRoot).Path
@@ -375,8 +420,11 @@ if ($ValidationMode -eq 'Auto') {
 Write-Host "Validating public publication contract in $RepositoryRoot"
 Test-SchemaContracts
 $pr = Get-PullRequestContext
+$baseState = Get-BasePublicationState
+if ($pr.Title) { Test-ContentSafety 'pull request title' $pr.Title }
+if ($pr.Body) { Test-ContentSafety 'pull request body' $pr.Body }
 if ($pr.IsGenerated) {
-    foreach ($path in $pr.Changed) {
+    foreach ($path in $pr.Touched) {
         if (-not (Test-GeneratedPath $path)) {
             Add-Failure "Generated publication changed hand-maintained path '$path'. Split governance changes from publication."
         }
@@ -392,8 +440,8 @@ if ($pr.IsGenerated) {
         }
     }
 }
-elseif ($pr.Changed.Count -gt 0) {
-    foreach ($path in $pr.Changed) {
+elseif ($pr.Touched.Count -gt 0) {
+    foreach ($path in $pr.Touched) {
         if (Test-GeneratedPath $path) {
             Add-Failure "Hand-maintained pull request changed generated path '$path'. Use the controlled generated publication marker and report."
         }
@@ -439,14 +487,19 @@ foreach ($file in $generatedFiles) {
 
 $artifactDirectories = @()
 if (Test-Path -LiteralPath $templatesRoot -PathType Container) {
-    $artifactDirectories = @(
-        Get-ChildItem -LiteralPath $templatesRoot -Directory -Recurse |
-            Where-Object {
-                (Test-Path -LiteralPath (Join-Path $_.FullName 'metadata.json') -PathType Leaf) -or
-                (Test-Path -LiteralPath (Join-Path $_.FullName 'template.json') -PathType Leaf) -or
-                (Test-Path -LiteralPath (Join-Path $_.FullName 'README.md') -PathType Leaf)
-            }
-    )
+    $artifactRootPaths = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($file in Get-ChildItem -LiteralPath $templatesRoot -File -Recurse) {
+        $relative = Convert-ToRelativePath $file.FullName
+        $parts = $relative.Split('/')
+        if ($parts.Count -lt 5) {
+            Add-Failure "Generated file '$relative' is not beneath a canonical artifact root."
+            continue
+        }
+        [void]$artifactRootPaths.Add(($parts[0..3] -join '/'))
+    }
+    $artifactDirectories = @($artifactRootPaths | ForEach-Object {
+        Get-Item -LiteralPath (Join-Path $RepositoryRoot $_.Replace('/', '\'))
+    })
 }
 
 $metadataById = @{}
@@ -585,6 +638,25 @@ else {
     $null
 }
 
+if ($ValidationMode -eq 'PullRequest') {
+    if ($pr.Deleted -ccontains 'catalog.json') {
+        Add-Failure 'Deleting catalog.json is prohibited; publish an updated catalog with explicit removals.'
+    }
+    if ($pr.Deleted -ccontains 'generated-manifest.json') {
+        Add-Failure 'Deleting generated-manifest.json is prohibited; retain it with explicit removals.'
+    }
+    $deletedGenerated = @($pr.Deleted | Where-Object { Test-GeneratedPath $_ })
+    if ($deletedGenerated.Count -gt 0 -and $null -eq $manifest) {
+        Add-Failure 'Generated deletions require a candidate generated-manifest.json with explicit removal events.'
+    }
+    if ($baseState.HasCatalog -and $null -eq $catalog) {
+        Add-Failure 'The protected base catalog cannot disappear from a publication pull request.'
+    }
+    if ($baseState.HasManifest -and $null -eq $manifest) {
+        Add-Failure 'The protected base generated manifest cannot disappear from a publication pull request.'
+    }
+}
+
 if ($null -ne $catalog) {
     Test-PropertyOrder $catalog @('schemaVersion', 'generatedAt', 'artifacts') 'catalog.json'
     $catalogOrder = @($catalog.artifacts | ForEach-Object { [string]$_.id })
@@ -638,6 +710,35 @@ if ($null -ne $manifest) {
     if (($removalOrder -join "`n") -cne ($sortedRemovalOrder -join "`n")) {
         Add-Failure 'generated-manifest.json removals must be deterministically ordered by id.'
     }
+    $removalIds = @{}
+    $deletedArtifactIds = @(
+        $pr.Deleted |
+            Where-Object { $_ -match '^templates/(?:intune|defender|purview|entra)/[^/]+/([^/]+)(?:/|$)' } |
+            ForEach-Object {
+                [void]($_ -match '^templates/(?:intune|defender|purview|entra)/[^/]+/([^/]+)(?:/|$)')
+                $Matches[1]
+            } |
+            Sort-Object -Unique
+    )
+    foreach ($removal in $manifest.removals) {
+        $removalId = [string]$removal.id
+        if ($removalIds.ContainsKey($removalId)) {
+            Add-Failure "Manifest repeats removal event for '$removalId'."
+            continue
+        }
+        $removalIds[$removalId] = $true
+        if ($ValidationMode -eq 'PullRequest') {
+            if (-not $baseState.MetadataById.ContainsKey($removalId)) {
+                Add-Failure "Removal '$removalId' does not identify an artifact in the protected base."
+            }
+            elseif ([string]$removal.priorVersion -ne $baseState.MetadataById[$removalId].Version) {
+                Add-Failure "Removal '$removalId' priorVersion '$($removal.priorVersion)' does not match protected-base version '$($baseState.MetadataById[$removalId].Version)'."
+            }
+            if ($deletedArtifactIds -cnotcontains $removalId) {
+                Add-Failure "Removal '$removalId' is unused because that artifact is not deleted in this pull request."
+            }
+        }
+    }
     foreach ($entry in $manifest.files) {
         Test-PropertyOrder $entry @('path', 'byteLength', 'sha256') "manifest entry '$($entry.path)'"
         $path = [string]$entry.path
@@ -668,12 +769,9 @@ if ($null -ne $manifest) {
         }
     }
 
-    $removalIds = @($manifest.removals | ForEach-Object { [string]$_.id })
-    foreach ($deleted in $pr.Deleted) {
-        if ($deleted -match '^templates/(?:intune|defender|purview|entra)/[^/]+/([^/]+)(?:/|$)') {
-            if ($removalIds -notcontains $Matches[1]) {
-                Add-Failure "Deleted artifact '$($Matches[1])' requires an explicit generated-manifest removal event."
-            }
+    foreach ($deletedId in $deletedArtifactIds) {
+        if (-not $removalIds.ContainsKey($deletedId)) {
+            Add-Failure "Deleted artifact '$deletedId' requires an explicit generated-manifest removal event."
         }
     }
 }
