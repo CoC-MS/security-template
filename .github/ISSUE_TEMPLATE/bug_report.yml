@@ -1,0 +1,156 @@
+name: Bug report
+description: Report a reproducible problem with a template, script, validation, or documentation.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve ALSO Security Template.
+
+        Do not report security vulnerabilities here. Use the private process described in SECURITY.md instead. Do not include credentials, customer information, tenant IDs, tokens, certificates, or unredacted logs.
+  - type: dropdown
+    id: solution-area
+    attributes:
+      label: Affected solution area
+      description: Select the area where the problem occurs.
+      options:
+        - Microsoft Defender for Endpoint
+        - Microsoft Defender for Office 365
+        - Microsoft Defender for Identity
+        - Microsoft Defender for Cloud Apps
+        - Microsoft Intune
+        - Microsoft Purview
+        - Microsoft Entra
+        - PowerShell or Microsoft Graph
+        - Documentation
+        - Deployment tooling
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: component-type
+    attributes:
+      label: Affected component type
+      description: Select the type of content that is not working as expected.
+      options:
+        - Configuration template
+        - Security policy
+        - PowerShell script
+        - Detection script
+        - Remediation script
+        - Compliance script
+        - Import or export process
+        - Validation test
+        - Documentation
+        - GitHub workflow
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Security Template version or release
+      description: Provide the release tag, commit, or package version you used.
+      placeholder: "Example: v1.2.0 or commit abc1234"
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment-method
+    attributes:
+      label: Deployment method
+      description: Select the method used to apply the content.
+      options:
+        - Manual portal configuration
+        - PowerShell
+        - Microsoft Graph API
+        - GitHub Actions
+        - Azure Automation
+        - Intune import or assignment
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: license-level
+    attributes:
+      label: Microsoft license level
+      description: Enter the applicable license or subscription, if relevant.
+      placeholder: "Example: Microsoft 365 E5, Microsoft Intune Plan 1, or Not applicable"
+  - type: input
+    id: target-platform
+    attributes:
+      label: Target platform or operating system
+      description: Enter the relevant platform, version, or "Not applicable".
+      placeholder: "Example: Windows 11 23H2 or Not applicable"
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: Describe what you expected the template, script, or validation to do.
+      placeholder: "Example: The script should assign the policy and report a successful assignment."
+    validations:
+      required: true
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: Describe what happened instead and the impact on deployment or validation.
+      placeholder: "Example: The script stopped before assignment and returned an authorization error."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Reproduction steps
+      description: List the minimum sanitized steps another contributor can use to reproduce the problem.
+      placeholder: |
+        1. Run the script with the documented parameters.
+        2. Select the specified policy.
+        3. Observe the reported error.
+    validations:
+      required: true
+  - type: textarea
+    id: sanitized-error-output
+    attributes:
+      label: Sanitized error output
+      description: Paste only the relevant error output after removing tenant IDs, user names, URLs, tokens, and other sensitive data.
+      placeholder: "Example: Authorization_RequestDenied: Insufficient privileges to complete the operation."
+      render: shell
+  - type: dropdown
+    id: test-tenant
+    attributes:
+      label: Reproduced in a test tenant
+      description: State whether you reproduced the problem outside a production customer environment.
+      options:
+        - "Yes"
+        - "No"
+        - Not tested
+    validations:
+      required: true
+  - type: textarea
+    id: troubleshooting
+    attributes:
+      label: Troubleshooting already performed
+      description: List relevant checks, retries, or workarounds you tried.
+      placeholder: "Example: Confirmed required permissions, retried with a fresh session, and tested the previous release."
+  - type: textarea
+    id: security-impact
+    attributes:
+      label: Possible security impact
+      description: Describe any possible effect on protection, compliance, access, or monitoring. Do not classify severity or disclose sensitive details.
+      placeholder: "Example: Devices may remain without the intended attack surface reduction policy."
+  - type: checkboxes
+    id: sensitive-data-confirmation
+    attributes:
+      label: Sensitive data confirmation
+      options:
+        - label: I removed all credentials, secrets, customer information, tenant identifiers, access tokens, certificates, and sensitive logs.
+          required: true
+  - type: checkboxes
+    id: existing-issues-confirmation
+    attributes:
+      label: Existing issues confirmation
+      options:
+        - label: I reviewed existing issues and did not find a matching report.
+          required: true

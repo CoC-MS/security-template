@@ -1,0 +1,98 @@
+name: Documentation or licensing correction
+description: Report inaccurate, missing, outdated, or unclear documentation or licensing guidance.
+title: "[Docs/License]: "
+labels:
+  - documentation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping keep ALSO Security Template accurate.
+
+        Do not include confidential licensing agreements, non-public pricing, customer information, tenant IDs, credentials, tokens, certificates, or sensitive logs.
+  - type: dropdown
+    id: correction-category
+    attributes:
+      label: Correction category
+      description: Select the type of correction needed.
+      options:
+        - Incorrect documentation
+        - Missing documentation
+        - Outdated Microsoft product information
+        - Licensing clarification
+        - Broken link
+        - Typographical or formatting problem
+        - Translation or terminology
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: affected-location
+    attributes:
+      label: Affected document, file, or section
+      description: Provide the repository path, page URL, heading, or line reference.
+      placeholder: "Example: docs/intune/deployment.md, Prerequisites section"
+    validations:
+      required: true
+  - type: input
+    id: microsoft-product
+    attributes:
+      label: Affected Microsoft product
+      description: Enter the product involved, or "Not applicable" for general repository documentation.
+      placeholder: "Example: Microsoft Intune or Not applicable"
+    validations:
+      required: true
+  - type: textarea
+    id: current-guidance
+    attributes:
+      label: Current wording or guidance
+      description: Quote a short, relevant excerpt or summarize the existing guidance.
+      placeholder: "Example: The guide states that this setting is available in all Microsoft 365 plans."
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-correction
+    attributes:
+      label: Proposed correction
+      description: Provide corrected wording, a link update, or a clear description of the change.
+      placeholder: "Example: State that the setting requires the specified license, and link to the Microsoft Learn documentation."
+    validations:
+      required: true
+  - type: input
+    id: authoritative-reference
+    attributes:
+      label: Authoritative reference or Microsoft Learn source
+      description: Provide a public Microsoft Learn or other authoritative source, if available.
+      placeholder: "Example: https://learn.microsoft.com/... or Not available"
+    validations:
+      required: true
+  - type: input
+    id: license-subscription
+    attributes:
+      label: Microsoft license or subscription involved
+      description: Enter the public license or subscription name, or "Not applicable".
+      placeholder: "Example: Microsoft 365 E5 or Not applicable"
+    validations:
+      required: true
+  - type: textarea
+    id: correction-impact
+    attributes:
+      label: Why the correction matters
+      description: Explain how the current content could affect a deployment, decision, or understanding.
+      placeholder: "Example: The current guidance could lead administrators to plan for a feature that is not included in their subscription."
+    validations:
+      required: true
+  - type: checkboxes
+    id: sensitive-data-confirmation
+    attributes:
+      label: Sensitive data confirmation
+      options:
+        - label: This report contains no credentials, secrets, customer information, tenant identifiers, access tokens, certificates, sensitive logs, confidential licensing agreements, or non-public pricing information.
+          required: true
+  - type: checkboxes
+    id: existing-issues-confirmation
+    attributes:
+      label: Existing issues confirmation
+      options:
+        - label: I reviewed existing issues and did not find a matching correction.
+          required: true
