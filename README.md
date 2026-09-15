@@ -56,6 +56,17 @@ the stable-ID, versioning, compatibility, documentation, and generated-path
 rules. Governance files, schemas, validation, and repository policy remain
 hand-maintained.
 
+The catalog is currently empty while the first controlled artifact publication
+is prepared. Once populated, start with [`catalog.json`](catalog.json), follow
+an artifact's `path` to its public `README.md`, review its metadata and
+prerequisites, and use only the deployment/import procedure documented there.
+Validator fixtures under `tests/fixtures/**` are synthetic test data and are
+not published artifacts.
+
+Repository releases use immutable `publication-v<major>.<minor>.<patch>` tags.
+See the [release process](docs/RELEASE_PROCESS.md) for the human approval,
+versioning, validation, and verification requirements.
+
 ## Important usage notice
 
 The ALSO Security Template provides tested configuration templates,

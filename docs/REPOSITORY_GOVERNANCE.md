@@ -50,6 +50,12 @@ protected default branch after validation, and are immutable. A release notes
 the artifact additions, updates, deprecations, and removals. Artifact versions
 remain independent SemVer values recorded in metadata.
 
+Follow the complete human-authorized procedure in
+[`RELEASE_PROCESS.md`](RELEASE_PROCESS.md). The tag version must exactly equal
+`generated-manifest.json`'s `publicationVersion` at the tagged commit. The
+current empty `1.0.0` catalog and manifest are unreleased preparation for the
+first real artifact publication, not a release.
+
 ## Yank and security-advisory revocation
 
 For an unsafe published artifact, privately coordinate through GitHub Security
@@ -68,11 +74,11 @@ advisory details when disclosure is safe.
 
 Before production publication:
 
-1. Replace `security@example.com` in `SECURITY.md` with an authoritative,
-   monitored private reporting channel and define acknowledgement/remediation
-   expectations. No authoritative address currently exists in this repository.
-2. Replace the placeholder professional-services route in `SUPPORT.md` if a
-   more specific authoritative public route is approved.
+1. Verify GitHub private vulnerability reporting remains enabled and that the
+   reporting link in `SECURITY.md` opens the repository's private advisory flow.
+2. Confirm issue forms and `SUPPORT.md` route only non-sensitive support
+   requests to public issues and direct private operational/customer data to an
+   established secure support channel outside this repository.
 3. Create the branch ruleset and protected environment described above.
 4. Configure the least-privilege publication identity and verify it cannot
    modify hand-maintained paths or merge directly.
