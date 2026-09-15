@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.0.0",
+  "publicationVersion": "1.0.0",
+  "generatedAt": "2026-09-15T14:17:52Z",
+  "publisher": "ALSO Security Templates",
+  "files": [
+    {
+      "path": "catalog.json",
+      "byteLength": 91,
+      "sha256": "8b946eacadc2b5d41243eac17d7710f92821da0b873f78261c2f958b11b7fc47"
+    }
+  ],
+  "removals": []
+}
