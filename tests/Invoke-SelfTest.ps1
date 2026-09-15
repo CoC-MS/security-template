@@ -244,3 +244,4 @@ if ($testsRun -le 0) {
     throw 'Self-test executed zero cases.'
 }
 Write-Host "Self-test passed: $testsRun cases."
+exit 0
