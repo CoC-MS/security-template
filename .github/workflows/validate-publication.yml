@@ -1,0 +1,89 @@
+name: Validate public publication
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-publication-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate public publication (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate publication contract
+        shell: pwsh
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          $validator = './scripts/Validate-Publication.ps1'
+          $policy = './.github/publication-path-policy.json'
+          if ($env:BASE_SHA) {
+            $baseValidator = Join-Path $env:RUNNER_TEMP 'Validate-Publication.base.ps1'
+            $basePolicy = Join-Path $env:RUNNER_TEMP 'publication-path-policy.base.json'
+            git show "${env:BASE_SHA}:scripts/Validate-Publication.ps1" 2>$null | Set-Content -LiteralPath $baseValidator -Encoding utf8NoBOM
+            git show "${env:BASE_SHA}:.github/publication-path-policy.json" 2>$null | Set-Content -LiteralPath $basePolicy -Encoding utf8NoBOM
+            if ((Test-Path $baseValidator) -and (Test-Path $basePolicy) -and
+                (Get-Item $baseValidator).Length -gt 0 -and (Get-Item $basePolicy).Length -gt 0) {
+              $validator = $baseValidator
+              $policy = $basePolicy
+            }
+            else {
+              Write-Warning 'Protected base does not yet contain the validator policy; using candidate bootstrap version.'
+            }
+          }
+          $parameters = @{
+            RepositoryRoot = $env:GITHUB_WORKSPACE
+            ReportPath = 'validation-report.json'
+            SchemaRoot = (Join-Path $env:GITHUB_WORKSPACE 'schemas')
+            PolicyPath = $policy
+          }
+          if ($env:BASE_SHA) {
+            $parameters.BaseRef = $env:BASE_SHA
+            $parameters.ValidationMode = 'PullRequest'
+          }
+          else {
+            $parameters.ValidationMode = 'Snapshot'
+          }
+          & $validator @parameters
+
+      - name: Run dependency-free validator tests
+        shell: pwsh
+        run: ./tests/Invoke-SelfTest.ps1
+
+      - name: Run pinned Pester suite
+        shell: pwsh
+        run: ./tests/Invoke-Pester.ps1
+
+      - name: Upload public validation report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-publication-validation-${{ runner.os }}
+          path: validation-report.json
+          if-no-files-found: error
+          retention-days: 14

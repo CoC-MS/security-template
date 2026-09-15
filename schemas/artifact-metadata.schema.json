@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/CoC-MS/security-template/schemas/artifact-metadata.schema.json",
+  "title": "Public artifact metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "schemaVersion",
+    "artifactVersion",
+    "solutionArea",
+    "component",
+    "title",
+    "description",
+    "platforms",
+    "scope",
+    "impact",
+    "prerequisites",
+    "licensing",
+    "permissions",
+    "dependencies",
+    "incompatibilities",
+    "deployment",
+    "validation",
+    "pilot",
+    "rollback",
+    "compatibility",
+    "limitations",
+    "references",
+    "lastValidated",
+    "integrity",
+    "provenance"
+  ],
+  "properties": {
+    "id": { "$ref": "#/$defs/stableId" },
+    "schemaVersion": { "$ref": "#/$defs/semver" },
+    "artifactVersion": { "$ref": "#/$defs/semver" },
+    "solutionArea": { "enum": ["intune", "defender", "purview", "entra"] },
+    "component": { "$ref": "#/$defs/stableId" },
+    "title": { "type": "string", "minLength": 3, "maxLength": 120 },
+    "description": { "type": "string", "minLength": 10, "maxLength": 1000 },
+    "platforms": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "scope": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "summary"],
+      "properties": {
+        "level": { "enum": ["low", "medium", "high", "critical"] },
+        "summary": { "type": "string", "minLength": 10 }
+      }
+    },
+    "prerequisites": { "$ref": "#/$defs/nonEmptyStrings" },
+    "licensing": { "$ref": "#/$defs/nonEmptyStrings" },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["leastPrivilege"],
+      "properties": {
+        "leastPrivilege": { "$ref": "#/$defs/nonEmptyStrings" },
+        "elevationRequired": { "type": "boolean" }
+      }
+    },
+    "dependencies": { "$ref": "#/$defs/ids" },
+    "incompatibilities": { "$ref": "#/$defs/ids" },
+    "deployment": { "$ref": "#/$defs/procedure" },
+    "validation": { "$ref": "#/$defs/procedure" },
+    "pilot": { "$ref": "#/$defs/procedure" },
+    "rollback": { "$ref": "#/$defs/procedure" },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["products", "notes"],
+      "properties": {
+        "products": { "$ref": "#/$defs/nonEmptyStrings" },
+        "minimumVersions": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } },
+        "notes": { "type": "string", "minLength": 1 }
+      }
+    },
+    "limitations": { "$ref": "#/$defs/nonEmptyStrings" },
+    "references": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^https://([a-z0-9-]+\\.)*(microsoft\\.com|aka\\.ms)(/|$)"
+      }
+    },
+    "lastValidated": { "type": "string", "format": "date", "pattern": "^20[0-9]{2}-[0-9]{2}-[0-9]{2}$" },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["templateSha256"],
+      "properties": {
+        "templateSha256": { "$ref": "#/$defs/sha256" },
+        "additionalFiles": {
+          "type": "object",
+          "propertyNames": { "pattern": "^(deployment|scripts)/[A-Za-z0-9._/-]+$" },
+          "additionalProperties": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publisher", "publishedAt"],
+      "properties": {
+        "publisher": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "publicRepository": { "type": "string", "const": "CoC-MS/security-template" },
+        "publicRevision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "publishedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["active", "deprecated"] },
+        "deprecatedOn": { "type": "string", "format": "date" },
+        "replacementId": { "$ref": "#/$defs/stableId" },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "stableId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "minLength": 3, "maxLength": 100 },
+    "semver": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "nonEmptyStrings": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "ids": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/stableId" } },
+    "procedure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "steps"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 10 },
+        "steps": { "$ref": "#/$defs/nonEmptyStrings" }
+      }
+    }
+  }
+}

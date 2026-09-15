@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "artifacts": [
+    {
+      "id": "synthetic-policy-fixture",
+      "artifactVersion": "1.0.0",
+      "solutionArea": "entra",
+      "component": "conditional-access",
+      "title": "Synthetic policy fixture",
+      "path": "templates/entra/conditional-access/synthetic-policy-fixture",
+      "metadataSha256": "d29b42bc87212f45c479ed77298dafbdf3459caf57505ed37ab6a6601bb332ff",
+      "status": "active"
+    }
+  ]
+}

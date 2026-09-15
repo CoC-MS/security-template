@@ -1,0 +1,59 @@
+{
+  "id": "synthetic-policy-fixture",
+  "schemaVersion": "1.0.0",
+  "artifactVersion": "1.0.0",
+  "solutionArea": "entra",
+  "component": "conditional-access",
+  "title": "Synthetic policy fixture",
+  "description": "A non-deployable synthetic fixture used only to test public validation.",
+  "platforms": ["Microsoft Entra"],
+  "scope": ["Synthetic test scope"],
+  "impact": {
+    "level": "low",
+    "summary": "No production impact because this fixture is not a published artifact."
+  },
+  "prerequisites": ["Run only from the validator test suite"],
+  "licensing": ["No license is required for this synthetic fixture"],
+  "permissions": {
+    "leastPrivilege": ["No permissions"],
+    "elevationRequired": false
+  },
+  "dependencies": [],
+  "incompatibilities": [],
+  "deployment": {
+    "summary": "Do not deploy this synthetic validation fixture.",
+    "steps": ["Keep the fixture under tests"]
+  },
+  "validation": {
+    "summary": "Run the repository publication validator.",
+    "steps": ["Confirm the valid fixture passes"]
+  },
+  "pilot": {
+    "summary": "No pilot applies to this non-deployable fixture.",
+    "steps": ["Do not use outside tests"]
+  },
+  "rollback": {
+    "summary": "Delete the temporary test copy after validation.",
+    "steps": ["Allow the test harness to clean up"]
+  },
+  "compatibility": {
+    "products": ["Microsoft Entra"],
+    "minimumVersions": {},
+    "notes": "Fixture-only content"
+  },
+  "limitations": ["Not a deployable production template"],
+  "references": ["https://learn.microsoft.com/entra/"],
+  "lastValidated": "2026-01-01",
+  "integrity": {
+    "templateSha256": "62de52a0ba8ff67fbd6063328acdef1afee9feb78f523ab668fcce42eccb34b6",
+    "additionalFiles": {}
+  },
+  "provenance": {
+    "publisher": "Synthetic test publisher",
+    "publicRepository": "CoC-MS/security-template",
+    "publishedAt": "2026-01-01T00:00:00Z"
+  },
+  "lifecycle": {
+    "status": "active"
+  }
+}
