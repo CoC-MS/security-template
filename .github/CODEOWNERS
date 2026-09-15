@@ -1,0 +1,10 @@
+# Governance and contract are maintainer-owned.
+* @CoC-MS/security-template-maintainers
+
+# Generated paths still require independent maintainer approval, especially deletions.
+/templates/ @CoC-MS/security-template-maintainers
+/catalog.json @CoC-MS/security-template-maintainers
+/generated-manifest.json @CoC-MS/security-template-maintainers
+/.github/publication-path-policy.json @CoC-MS/security-template-maintainers
+/scripts/Validate-Publication.ps1 @CoC-MS/security-template-maintainers
+/.github/workflows/validate-publication.yml @CoC-MS/security-template-maintainers

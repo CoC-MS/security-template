@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedPathPatterns": [
+    "^catalog\\.json$",
+    "^generated-manifest\\.json$",
+    "^templates/(intune|defender|purview|entra)/[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*/README\\.md$",
+    "^templates/(intune|defender|purview|entra)/[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*/metadata\\.json$",
+    "^templates/(intune|defender|purview|entra)/[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*/template\\.json$",
+    "^templates/(intune|defender|purview|entra)/[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*/deployment/[A-Za-z0-9._/-]+$",
+    "^templates/(intune|defender|purview|entra)/[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*/scripts/[A-Za-z0-9._/-]+$"
+  ]
+}

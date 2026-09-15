@@ -5,8 +5,8 @@ The ALSO Security Templates project is designed to help partners implement
 Microsoft security solutions faster, more consistently and at scale.
 
 The repository brings together tested configuration templates, policies,
-scripts, automation and practical documentation for Microsoft Defender,
-Intune and Purview. Instead of starting every customer implementation from
+scripts, automation and practical documentation for Microsoft Intune,
+Defender, Purview, and Entra. Instead of starting every customer implementation from
 scratch, partners can use the project as a structured starting point and
 adapt the content to the customer's requirements.
 
@@ -41,6 +41,20 @@ a customer environment.
 
 The templates do not replace technical assessment, solution design,
 professional judgement or customer-specific implementation planning.
+
+## Published artifact contract
+
+Public artifacts are published under
+`templates/<solution-area>/<component>/<stable-artifact-id>/`. Each artifact
+contains `template.json`, `metadata.json`, and `README.md`, with optional
+deployment files or scripts. The generated `catalog.json` and
+`generated-manifest.json` provide discovery and integrity information.
+
+The supported solution-area path names are `intune`, `defender`, `purview`,
+and `entra`. See [the publication contract](docs/PUBLICATION_CONTRACT.md) for
+the stable-ID, versioning, compatibility, documentation, and generated-path
+rules. Governance files, schemas, validation, and repository policy remain
+hand-maintained.
 
 ## Important usage notice
 

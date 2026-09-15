@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0.0",
+  "publicationVersion": "1.0.0",
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "publisher": "Synthetic test publisher",
+  "files": [
+    {
+      "path": "catalog.json",
+      "byteLength": 489,
+      "sha256": "9aa3c87608e16abc181d285dec616ab55d08f8b37abee7890ba6b6a6e8537411"
+    },
+    {
+      "path": "templates/entra/conditional-access/synthetic-policy-fixture/README.md",
+      "byteLength": 464,
+      "sha256": "c5c5ea7c3a4afca24d09fba2264ce9ec168b4d9d025e2d0d63cd5a8de8396874"
+    },
+    {
+      "path": "templates/entra/conditional-access/synthetic-policy-fixture/metadata.json",
+      "byteLength": 1926,
+      "sha256": "d29b42bc87212f45c479ed77298dafbdf3459caf57505ed37ab6a6601bb332ff"
+    },
+    {
+      "path": "templates/entra/conditional-access/synthetic-policy-fixture/template.json",
+      "byteLength": 82,
+      "sha256": "62de52a0ba8ff67fbd6063328acdef1afee9feb78f523ab668fcce42eccb34b6"
+    }
+  ],
+  "removals": []
+}

@@ -1,0 +1,5 @@
+# Generated artifacts and validator fixtures must retain deterministic LF bytes.
+/catalog.json text eol=lf
+/generated-manifest.json text eol=lf
+/templates/** text eol=lf
+/tests/fixtures/** text eol=lf
