@@ -5,9 +5,10 @@
 Do not report suspected security vulnerabilities in public GitHub issues,
 discussions, pull requests, or other public channels.
 
-Please report vulnerabilities privately using the following contact:
-
-- **Placeholder:** [Report a security vulnerability](mailto:security@example.com)
+Use GitHub's
+[private vulnerability reporting](https://github.com/CoC-MS/security-template/security/advisories/new)
+flow to submit a report directly to the repository maintainers. GitHub keeps
+the report private while maintainers assess and coordinate it.
 
 Include a clear description of the issue, affected files or components, steps
 to reproduce it, potential impact, and any suggested remediation. Do not
@@ -16,9 +17,10 @@ other sensitive information unless a secure exchange method has been agreed.
 
 ## What to expect
 
-ALSO will acknowledge the report, assess the issue, and coordinate the next
-steps as appropriate. Reporting timelines and remediation commitments are
-placeholders until a formal vulnerability disclosure process is published.
+Maintainers will review the private report and use the security advisory to
+coordinate follow-up when appropriate. Response and remediation timing depends
+on the report's scope, impact, and reproducibility; this repository does not
+promise a fixed response or remediation time.
 
 ## Scope
 

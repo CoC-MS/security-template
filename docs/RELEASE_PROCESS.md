@@ -15,7 +15,8 @@ Before a release:
 1. Complete every blocking administrator requirement in
    [`REPOSITORY_GOVERNANCE.md`](REPOSITORY_GOVERNANCE.md), including branch and
    tag protection, CODEOWNER review, the protected publication environment,
-   publication identity restrictions, and an authoritative security contact.
+   publication identity restrictions, and enabled GitHub private vulnerability
+   reporting.
 2. Merge the generated publication pull request through protected `main`
    without bypassing required review or validation.
 3. Record the exact merge commit on `main`. Do not release a pull request head,

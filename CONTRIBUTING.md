@@ -31,5 +31,5 @@ defined by the publication contract. Publication automation may modify only
 ## Security
 
 Do not disclose vulnerabilities publicly. Follow [SECURITY.md](SECURITY.md).
-The security reporting address is an unresolved administrator setup item until
-the placeholder in that file is replaced with an authoritative private channel.
+Use the repository's GitHub private vulnerability reporting flow for suspected
+vulnerabilities, and never include customer data or credentials.

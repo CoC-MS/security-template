@@ -74,11 +74,11 @@ advisory details when disclosure is safe.
 
 Before production publication:
 
-1. Replace `security@example.com` in `SECURITY.md` with an authoritative,
-   monitored private reporting channel and define acknowledgement/remediation
-   expectations. No authoritative address currently exists in this repository.
-2. Replace the placeholder professional-services route in `SUPPORT.md` if a
-   more specific authoritative public route is approved.
+1. Verify GitHub private vulnerability reporting remains enabled and that the
+   reporting link in `SECURITY.md` opens the repository's private advisory flow.
+2. Confirm issue forms and `SUPPORT.md` route only non-sensitive support
+   requests to public issues and direct private operational/customer data to an
+   established secure support channel outside this repository.
 3. Create the branch ruleset and protected environment described above.
 4. Configure the least-privilege publication identity and verify it cannot
    modify hand-maintained paths or merge directly.
