@@ -1,4 +1,4 @@
-# security-template
+# ALSO Security Templates
 Deployment accelerators, configuration templates, scripts and documentation for Microsoft Defender, Intune and Purview.
 
 ## Reporting issues
