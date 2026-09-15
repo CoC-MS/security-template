@@ -1,6 +1,44 @@
 # ALSO Security Templates
 Deployment accelerators, configuration templates, scripts and documentation for Microsoft Defender, Intune and Purview.
 
+## Important usage notice
+
+The ALSO Security Template provides tested configuration templates,
+policies, scripts, automation and supporting documentation intended
+to accelerate Microsoft security deployments.
+
+ALSO makes reasonable efforts to test and validate the content before
+it is published. However, every customer environment is different.
+Licensing, existing configurations, integrations, device platforms,
+network architecture, regulatory requirements and other environmental
+variables may affect how the solution operates.
+
+ALSO cannot guarantee that the content is suitable for every customer
+environment or that it will operate without errors, interruptions,
+conflicts or unintended effects.
+
+## The implementing partner is responsible for:
+
+- Reviewing the configuration, policy or script
+- Confirming product licensing and technical prerequisites
+- Assessing compatibility with the customer's existing environment
+- Testing the content in a dedicated test or pilot environment
+- Planning an appropriate staged rollout
+- Monitoring the results and validating the intended outcome
+- Maintaining a documented rollback or recovery plan
+
+The partner should not deploy the solution directly across an entire
+production environment without prior validation.
+
+Use of this project is at the user's own risk. To the extent permitted
+by applicable law, ALSO is not liable for loss, damage, service
+interruption, data loss, configuration changes, security incidents or
+other consequences resulting from the use or application of this
+project.
+
+This notice does not replace the terms and conditions of the Apache
+License 2.0. If there is a conflict, the Apache License 2.0 governs.
+
 ## Reporting issues
 
 Partners, consultants, administrators, and contributors can use the [issue forms](../../issues/new/choose) to report bugs, request improvements, or correct documentation and licensing guidance.
