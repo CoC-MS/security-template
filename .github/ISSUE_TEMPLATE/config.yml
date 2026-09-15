@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/OWNER/REPOSITORY/blob/main/SECURITY.md
+    about: Do not report security vulnerabilities in public issues. Follow the private reporting process in SECURITY.md.
+  - name: Get support
+    url: https://github.com/OWNER/REPOSITORY/blob/main/SUPPORT.md
+    about: Use SUPPORT.md for usage questions, implementation guidance, and general assistance.
