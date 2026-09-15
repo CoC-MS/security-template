@@ -1,5 +1,28 @@
 # ALSO Security Templates
-Deployment accelerators, configuration templates, scripts and documentation for Microsoft Defender, Intune and Purview.
+## About the Security Templates
+
+The ALSO Security Templates project is designed to help partners implement
+Microsoft security solutions faster, more consistently and at scale.
+
+The repository brings together tested configuration templates, policies,
+scripts, automation and practical documentation for Microsoft Defender,
+Intune and Purview. Instead of starting every customer implementation from
+scratch, partners can use the project as a structured starting point and
+adapt the content to the customer's requirements.
+
+Our goal is to reduce repetitive configuration work, simplify deployment
+and make Microsoft security capabilities easier to adopt across customer
+environments.
+
+The project is built around three principles:
+
+- **Make deployment easier** by providing ready-to-use starting points
+- **Improve consistency** through reusable and tested configurations
+- **Help partners scale** by reducing the time required for each implementation
+
+The templates are deployment accelerators, not universal configurations.
+Partners remain responsible for reviewing, testing and adapting the content
+before deploying it in a customer environment.
 
 ## Important usage notice
 
@@ -39,6 +62,36 @@ project.
 This notice does not replace the terms and conditions of the Apache
 License 2.0. If there is a conflict, the Apache License 2.0 governs.
 
+## Recommended deployment approach
+
+All templates, policies and scripts should follow a controlled deployment
+process:
+
+1. **Review**  
+   Understand what the configuration changes, which services it affects
+   and which licences or prerequisites it requires.
+
+2. **Test**  
+   Deploy the content in a dedicated test tenant or non-production
+   environment.
+
+3. **Pilot**  
+   Apply the change to a small and representative pilot group.
+
+4. **Validate**  
+   Confirm that the expected security and operational outcomes are
+   achieved without conflicts or unintended effects.
+
+5. **Roll out**  
+   Expand the deployment gradually using a controlled, staged approach.
+
+6. **Monitor**  
+   Monitor deployment status, user impact, alerts and operational results.
+
+7. **Recover**  
+   Maintain a documented rollback or recovery approach for each
+   production deployment.
+
 ## Reporting issues
 
 Partners, consultants, administrators, and contributors can use the [issue forms](../../issues/new/choose) to report bugs, request improvements, or correct documentation and licensing guidance.
@@ -52,3 +105,33 @@ Choose the form that best matches your report:
 Before submitting, search existing issues to avoid duplicates. Include only the details needed to understand and reproduce the problem, using a sanitized test example where possible.
 
 Do not include customer information, tenant identifiers, user details, credentials, secrets, access tokens, certificates, or sensitive logs. Do not report security vulnerabilities in a public issue; follow the repository's private reporting process in `SECURITY.md`. For usage questions and implementation guidance, see `SUPPORT.md`.
+
+## Disclaimer and limitation of liability
+
+The materials in this repository, including policies, configuration
+templates, scripts, automation, documentation and examples, are provided
+on an "as is" and "as available" basis.
+
+Although ALSO performs testing and validation before publication, ALSO
+does not warrant or guarantee that the materials are error-free, suitable
+for a particular purpose, compatible with every customer environment or
+capable of producing a specific security, compliance or operational
+outcome.
+
+Customer environments may contain variables outside ALSO's knowledge or
+control, including existing configurations, third-party products,
+licensing limitations, unsupported platforms, network dependencies,
+regulatory requirements and changes to Microsoft products or services.
+
+The implementing partner is responsible for evaluating the materials,
+confirming all prerequisites and dependencies, testing in a non-production
+environment, conducting a controlled pilot, planning a staged rollout and
+maintaining appropriate rollback and recovery procedures.
+
+To the extent permitted by applicable law, ALSO shall not be liable for
+any direct, indirect, incidental, special, consequential or other loss or
+damage arising from the use of, inability to use or deployment of the
+materials in this repository.
+
+This disclaimer supplements the Apache License 2.0. It does not replace,
+amend or override the terms contained in the LICENSE file.
