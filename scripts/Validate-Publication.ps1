@@ -118,6 +118,80 @@ function Get-Sha256 {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
+function ConvertTo-PublicationVersion {
+    param(
+        [string]$Value,
+        [string]$Location
+    )
+    $version = $null
+    if (-not [version]::TryParse($Value, [ref]$version) -or
+        $version.Revision -ne -1) {
+        Add-Failure "$Location publicationVersion '$Value' is not a valid major.minor.patch version."
+        return $null
+    }
+    return $version
+}
+
+function Test-PublicationVersionTransition {
+    param(
+        [string]$BaseVersionValue,
+        [string]$CandidateVersionValue,
+        [int]$BaseArtifactCount,
+        [int]$CandidateArtifactCount,
+        [bool]$HasGeneratedChanges
+    )
+    $baseVersion = ConvertTo-PublicationVersion $BaseVersionValue 'Protected base'
+    $candidateVersion = ConvertTo-PublicationVersion $CandidateVersionValue 'Candidate'
+    if ($null -eq $baseVersion -or $null -eq $candidateVersion) {
+        return
+    }
+
+    $comparison = $candidateVersion.CompareTo($baseVersion)
+    if ($comparison -lt 0) {
+        Add-Failure "Candidate publicationVersion '$CandidateVersionValue' regresses protected-base version '$BaseVersionValue'."
+        return
+    }
+
+    if (-not $HasGeneratedChanges) {
+        if ($comparison -ne 0) {
+            Add-Failure 'publicationVersion may change only in a generated publication pull request.'
+        }
+        return
+    }
+
+    $isInitialArtifactRelease = (
+        $BaseVersionValue -eq '1.0.0' -and
+        $CandidateVersionValue -eq '1.0.0' -and
+        $BaseArtifactCount -eq 0 -and
+        $CandidateArtifactCount -gt 0
+    )
+    if ($comparison -eq 0) {
+        if (-not $isInitialArtifactRelease) {
+            Add-Failure "Generated publication changes must advance publicationVersion from '$BaseVersionValue'."
+        }
+        return
+    }
+
+    $isPatch = (
+        $candidateVersion.Major -eq $baseVersion.Major -and
+        $candidateVersion.Minor -eq $baseVersion.Minor -and
+        $candidateVersion.Build -eq ($baseVersion.Build + 1)
+    )
+    $isMinor = (
+        $candidateVersion.Major -eq $baseVersion.Major -and
+        $candidateVersion.Minor -eq ($baseVersion.Minor + 1) -and
+        $candidateVersion.Build -eq 0
+    )
+    $isMajor = (
+        $candidateVersion.Major -eq ($baseVersion.Major + 1) -and
+        $candidateVersion.Minor -eq 0 -and
+        $candidateVersion.Build -eq 0
+    )
+    if (-not ($isPatch -or $isMinor -or $isMajor)) {
+        Add-Failure "Candidate publicationVersion '$CandidateVersionValue' must advance from '$BaseVersionValue' by exactly one patch, minor, or major step."
+    }
+}
+
 function Test-GeneratedPath {
     param([string]$Path)
     $normalized = $Path.Replace('\', '/').TrimStart('./')
@@ -364,6 +438,8 @@ function Get-BasePublicationState {
         MetadataById = @{}
         HasCatalog = $false
         HasManifest = $false
+        ArtifactCount = 0
+        PublicationVersion = $null
     }
     if ($ValidationMode -ne 'PullRequest' -or [string]::IsNullOrWhiteSpace($BaseRef)) {
         return $state
@@ -374,6 +450,18 @@ function Get-BasePublicationState {
         $state.Files = @($files | ForEach-Object { $_.Replace('\', '/') })
         $state.HasCatalog = $state.Files -ccontains 'catalog.json'
         $state.HasManifest = $state.Files -ccontains 'generated-manifest.json'
+        if ($state.HasCatalog) {
+            $rawCatalog = (& git -C $RepositoryRoot show "${BaseRef}:catalog.json") -join "`n"
+            if ($LASTEXITCODE -ne 0) { throw 'git show failed for catalog.json' }
+            $baseCatalog = $rawCatalog | ConvertFrom-Json -Depth 100
+            $state.ArtifactCount = @($baseCatalog.artifacts).Count
+        }
+        if ($state.HasManifest) {
+            $rawManifest = (& git -C $RepositoryRoot show "${BaseRef}:generated-manifest.json") -join "`n"
+            if ($LASTEXITCODE -ne 0) { throw 'git show failed for generated-manifest.json' }
+            $baseManifest = $rawManifest | ConvertFrom-Json -Depth 100
+            $state.PublicationVersion = [string]$baseManifest.publicationVersion
+        }
         foreach ($path in $state.Files) {
             if ($path -notmatch '^templates/(?:intune|defender|purview|entra)/[^/]+/[^/]+/metadata\.json$') {
                 continue
@@ -654,6 +742,15 @@ if ($ValidationMode -eq 'PullRequest') {
     }
     if ($baseState.HasManifest -and $null -eq $manifest) {
         Add-Failure 'The protected base generated manifest cannot disappear from a publication pull request.'
+    }
+    if ($null -ne $manifest -and -not [string]::IsNullOrWhiteSpace($baseState.PublicationVersion)) {
+        $hasGeneratedChanges = @($pr.Touched | Where-Object { Test-GeneratedPath $_ }).Count -gt 0
+        Test-PublicationVersionTransition `
+            -BaseVersionValue $baseState.PublicationVersion `
+            -CandidateVersionValue ([string]$manifest.publicationVersion) `
+            -BaseArtifactCount $baseState.ArtifactCount `
+            -CandidateArtifactCount $metadataById.Count `
+            -HasGeneratedChanges $hasGeneratedChanges
     }
 }
 

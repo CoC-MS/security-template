@@ -59,8 +59,11 @@ function Write-Utf8Lf {
 }
 
 function New-PullRequestRepository {
+    param([scriptblock]$PrepareBase)
+
     $path = New-FixtureCopy
     Write-Utf8Lf (Join-Path $path 'governance-source.md') "Synthetic governance source.`n"
+    if ($PrepareBase) { & $PrepareBase $path }
     & git -C $path init --quiet
     & git -C $path config core.autocrlf false
     & git -C $path config user.email 'validator@example.invalid'
@@ -79,11 +82,13 @@ function Invoke-PullRequestCase {
         [string]$Name,
         [scriptblock]$Mutate,
         [string]$ExpectedMessage,
+        [bool]$ShouldPass = $false,
+        [scriptblock]$PrepareBase,
         [string]$Title = '[Generated publication] Synthetic validation',
         [string]$Body = "<!-- generated-publication -->`n## Publication summary`nSynthetic test`n## Artifacts`nSynthetic test`n## Removals`nNone`n## Validation`nSynthetic test"
     )
     $script:testsRun++
-    $repository = New-PullRequestRepository
+    $repository = New-PullRequestRepository -PrepareBase $PrepareBase
     $eventPath = Join-Path ([IO.Path]::GetTempPath()) "publication-event-$([guid]::NewGuid().ToString('N')).json"
     try {
         if ($Mutate) {
@@ -108,8 +113,9 @@ function Invoke-PullRequestCase {
             -EventPath $eventPath `
             -SchemaRoot $schemas `
             -PolicyPath $policy 2>&1 | Out-String
-        if ($LASTEXITCODE -eq 0) {
-            throw "Case '$Name' expected rejection but validator passed."
+        $passed = $LASTEXITCODE -eq 0
+        if ($passed -ne $ShouldPass) {
+            throw "Case '$Name' expected pass=$ShouldPass but validator exit code was $LASTEXITCODE. Output: $output"
         }
         if ($output -notmatch [regex]::Escape($ExpectedMessage)) {
             throw "Case '$Name' did not report '$ExpectedMessage'. Output: $output"
@@ -239,6 +245,81 @@ Invoke-PullRequestCase -Name 'pull request body leakage' `
 Invoke-PullRequestCase -Name 'pull request title leakage' `
     -ExpectedMessage 'pull request title contains a prohibited tenant domain' `
     -Title '[Generated publication] tenant-name.onmicrosoft.com'
+
+Invoke-PullRequestCase -Name 'publication version regression' `
+    -ExpectedMessage "regresses protected-base version '1.0.0'" `
+    -Mutate {
+        param($path)
+        $manifestPath = Join-Path $path 'generated-manifest.json'
+        $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+        $manifest.publicationVersion = '0.9.0'
+        Write-Utf8Lf $manifestPath (($manifest | ConvertTo-Json -Depth 20) + "`n")
+    }
+
+Invoke-PullRequestCase -Name 'skipped publication version' `
+    -ExpectedMessage "must advance from '1.0.0' by exactly one patch, minor, or major step" `
+    -Mutate {
+        param($path)
+        $manifestPath = Join-Path $path 'generated-manifest.json'
+        $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+        $manifest.publicationVersion = '1.2.0'
+        Write-Utf8Lf $manifestPath (($manifest | ConvertTo-Json -Depth 20) + "`n")
+    }
+
+Invoke-PullRequestCase -Name 'unchanged publication version' `
+    -ExpectedMessage "must advance publicationVersion from '1.0.0'" `
+    -Mutate {
+        param($path)
+        $manifestPath = Join-Path $path 'generated-manifest.json'
+        $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+        $manifest.publisher = 'Updated synthetic publisher'
+        Write-Utf8Lf $manifestPath (($manifest | ConvertTo-Json -Depth 20) + "`n")
+    }
+
+Invoke-PullRequestCase -Name 'next patch publication version' `
+    -ShouldPass $true `
+    -Mutate {
+        param($path)
+        $manifestPath = Join-Path $path 'generated-manifest.json'
+        $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+        $manifest.publicationVersion = '1.0.1'
+        Write-Utf8Lf $manifestPath (($manifest | ConvertTo-Json -Depth 20) + "`n")
+    }
+
+Invoke-PullRequestCase -Name 'next minor publication version' `
+    -ShouldPass $true `
+    -Mutate {
+        param($path)
+        $manifestPath = Join-Path $path 'generated-manifest.json'
+        $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+        $manifest.publicationVersion = '1.1.0'
+        Write-Utf8Lf $manifestPath (($manifest | ConvertTo-Json -Depth 20) + "`n")
+    }
+
+Invoke-PullRequestCase -Name 'next major publication version' `
+    -ShouldPass $true `
+    -Mutate {
+        param($path)
+        $manifestPath = Join-Path $path 'generated-manifest.json'
+        $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+        $manifest.publicationVersion = '2.0.0'
+        Write-Utf8Lf $manifestPath (($manifest | ConvertTo-Json -Depth 20) + "`n")
+    }
+
+Invoke-PullRequestCase -Name 'initial artifact retains bootstrap version' `
+    -ShouldPass $true `
+    -PrepareBase {
+        param($path)
+        Remove-Item -LiteralPath (Join-Path $path 'templates') -Recurse -Force
+        Copy-Item -LiteralPath (Join-Path $repositoryRoot 'catalog.json') -Destination (Join-Path $path 'catalog.json') -Force
+        Copy-Item -LiteralPath (Join-Path $repositoryRoot 'generated-manifest.json') -Destination (Join-Path $path 'generated-manifest.json') -Force
+    } `
+    -Mutate {
+        param($path)
+        Copy-Item -LiteralPath (Join-Path $fixture 'catalog.json') -Destination (Join-Path $path 'catalog.json') -Force
+        Copy-Item -LiteralPath (Join-Path $fixture 'generated-manifest.json') -Destination (Join-Path $path 'generated-manifest.json') -Force
+        Copy-Item -LiteralPath (Join-Path $fixture 'templates') -Destination (Join-Path $path 'templates') -Recurse -Force
+    }
 
 if ($testsRun -le 0) {
     throw 'Self-test executed zero cases.'

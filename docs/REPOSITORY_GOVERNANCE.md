@@ -50,6 +50,12 @@ protected default branch after validation, and are immutable. A release notes
 the artifact additions, updates, deprecations, and removals. Artifact versions
 remain independent SemVer values recorded in metadata.
 
+Follow the complete human-authorized procedure in
+[`RELEASE_PROCESS.md`](RELEASE_PROCESS.md). The tag version must exactly equal
+`generated-manifest.json`'s `publicationVersion` at the tagged commit. The
+current empty `1.0.0` catalog and manifest are unreleased preparation for the
+first real artifact publication, not a release.
+
 ## Yank and security-advisory revocation
 
 For an unsafe published artifact, privately coordinate through GitHub Security
