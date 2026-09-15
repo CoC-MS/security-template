@@ -24,6 +24,24 @@ The templates are deployment accelerators, not universal configurations.
 Partners remain responsible for reviewing, testing and adapting the content
 before deploying it in a customer environment.
 
+## Who this project is for
+
+The ALSO Security Templates project is intended primarily for:
+
+- Microsoft partners
+- Managed service providers
+- Security consultants
+- Microsoft 365 administrators
+- Endpoint and identity administrators
+- Technical teams responsible for customer implementation and operations
+
+The project assumes that the implementing partner understands the relevant
+Microsoft products and can evaluate the impact of configuration changes in
+a customer environment.
+
+The templates do not replace technical assessment, solution design,
+professional judgement or customer-specific implementation planning.
+
 ## Important usage notice
 
 The ALSO Security Template provides tested configuration templates,
