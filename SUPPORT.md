@@ -6,6 +6,9 @@ For questions about using the templates, implementation guidance, or general
 assistance, please open a [GitHub issue](../../issues/new/choose) using the
 form that best matches your request.
 
+See [How to report issues](HOW_TO_REPORT_ISSUES.md) for form selection and
+guidance on preparing a useful, sanitized report.
+
 Public issues are only for non-sensitive questions and sanitized examples. Do
 not include customer information, tenant identifiers, credentials, secrets,
 access tokens, certificates, private configuration exports, or sensitive logs.

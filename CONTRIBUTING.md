@@ -5,7 +5,8 @@ Thank you for improving ALSO Security Templates.
 ## Choose the contribution path
 
 - Report defects, requests, and documentation corrections with the repository
-  issue forms. Never include customer or tenant data.
+  issue forms. Follow [How to report issues](HOW_TO_REPORT_ISSUES.md) and never
+  include customer or tenant data.
 - Propose changes to governance, schemas, validation, or documentation in a
   normal pull request.
 - Published artifacts are accepted only through the controlled publication
