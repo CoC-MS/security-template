@@ -137,6 +137,9 @@ process:
 
 ## Reporting issues
 
+See [How to report issues](HOW_TO_REPORT_ISSUES.md) for step-by-step instructions
+on choosing a form, preparing a useful report, and removing sensitive data.
+
 Partners, consultants, administrators, and contributors can use the [issue forms](../../issues/new/choose) to report bugs, request improvements, or correct documentation and licensing guidance.
 
 Choose the form that best matches your report:
