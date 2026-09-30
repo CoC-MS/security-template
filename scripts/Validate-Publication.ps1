@@ -36,6 +36,9 @@ $forbiddenExtensions = @(
     '.msi', '.p12', '.pfx', '.pkg', '.rar', '.so', '.tar', '.war', '.zip'
 )
 $reservedWindowsNames = '^(?i)(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)'
+$publicTreeSyncBranch = 'publication/public-tree'
+$publicTreeSyncTitlePrefix = '[Public tree sync]'
+$publicTreeSyncMarker = '<!-- public-tree-sync -->'
 
 function Add-Failure {
     param([string]$Message)
@@ -219,6 +222,113 @@ function Test-SafeRelativePath {
     return $true
 }
 
+function Get-JsonPropertyValue {
+    param(
+        [object]$Object,
+        [string[]]$Names
+    )
+    $current = $Object
+    foreach ($name in $Names) {
+        if ($null -eq $current -or $null -eq $current.PSObject.Properties[$name]) {
+            return $null
+        }
+        $current = $current.PSObject.Properties[$name].Value
+    }
+    return $current
+}
+
+function Test-PublicTreeSyncPath {
+    param([string]$Path)
+    return $Path -ceq 'README.md' -or $Path -cmatch '^intune/[^/]'
+}
+
+function Test-PublicTreeSyncChanges {
+    param([object]$Context)
+
+    $deleted = @($Context.Deleted)
+    foreach ($path in $Context.Touched) {
+        if (-not (Test-SafeRelativePath $path)) {
+            Add-Failure "Public tree sync path '$path' is unsafe."
+            continue
+        }
+        if (-not (Test-PublicTreeSyncPath $path)) {
+            Add-Failure "Public tree sync changed prohibited path '$path'. Only README.md and intune/** may change."
+            continue
+        }
+        if ($path -ceq 'README.md' -and $deleted -ccontains $path) {
+            Add-Failure 'Public tree sync cannot delete README.md.'
+        }
+    }
+
+    $candidateEntries = @()
+    try {
+        $candidateEntries = @(& git -C $RepositoryRoot ls-tree -r --full-tree HEAD -- README.md intune)
+        if ($LASTEXITCODE -ne 0) { throw "git ls-tree exited with code $LASTEXITCODE" }
+    }
+    catch {
+        Add-Failure "Unable to inspect public tree sync candidate tree: $($_.Exception.Message)"
+    }
+    $candidatePaths = [System.Collections.Generic.List[string]]::new()
+    foreach ($entry in $candidateEntries) {
+        $parts = $entry -split "`t", 2
+        if ($parts.Count -ne 2) { continue }
+        $mode = ($parts[0] -split ' ')[0]
+        $path = $parts[1]
+        $candidatePaths.Add($path)
+        if ($mode -eq '120000') {
+            Add-Failure "Public tree sync path '$path' is a symlink."
+        }
+        elseif ($mode -eq '160000') {
+            Add-Failure "Public tree sync path '$path' is a submodule."
+        }
+        elseif (-not (Test-SafeRelativePath $path)) {
+            Add-Failure "Public tree sync path '$path' is unsafe."
+        }
+    }
+    Test-NormalizedCollisions -Paths $candidatePaths.ToArray() -Label 'Public tree sync'
+
+    $intuneRoot = Join-Path $RepositoryRoot 'intune'
+    if (Test-Path -LiteralPath $intuneRoot) {
+        $rootItem = Get-Item -LiteralPath $intuneRoot -Force
+        $items = @($rootItem) + @(Get-ChildItem -LiteralPath $intuneRoot -Recurse -Force)
+        foreach ($item in $items) {
+            if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+                Add-Failure "Public tree sync path '$(Convert-ToRelativePath $item.FullName)' is a symlink/reparse point."
+            }
+        }
+    }
+
+    foreach ($path in $Context.Changed) {
+        if ($deleted -ccontains $path -or -not (Test-SafeRelativePath $path) -or -not (Test-PublicTreeSyncPath $path)) {
+            continue
+        }
+        $fullPath = Join-Path $RepositoryRoot $path.Replace('/', [System.IO.Path]::DirectorySeparatorChar)
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+            continue
+        }
+        $file = Get-Item -LiteralPath $fullPath -Force
+        if ($forbiddenExtensions -contains $file.Extension.ToLowerInvariant()) {
+            Add-Failure "Public tree sync path '$path' uses forbidden binary extension '$($file.Extension)'."
+        }
+        if ($file.Length -gt 5MB) {
+            Add-Failure "Public tree sync file '$path' exceeds the 5 MiB limit."
+        }
+        $text = $null
+        try {
+            $text = $utf8Strict.GetString([System.IO.File]::ReadAllBytes($file.FullName))
+        }
+        catch {
+            continue
+        }
+        if ($text -match '-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----') {
+            Add-Failure "Public tree sync file '$path' contains a private key."
+        }
+        if ($text -match '(?i)(?:client[_-]?secret|api[_-]?key|access[_-]?token|password)\s*["'']?\s*[:=]\s*["''][^"'']{8,}["'']') {
+            Add-Failure "Public tree sync file '$path' contains a secret-like value."
+        }
+    }
+}
+
 function Test-SchemaContracts {
     $expectedDraft = 'https://json-schema.org/draft/2020-12/schema'
     foreach ($schemaFile in Get-ChildItem -LiteralPath $SchemaRoot -Filter '*.schema.json' -File) {
@@ -241,12 +351,15 @@ function Test-SchemaContracts {
 }
 
 function Test-NormalizedCollisions {
-    param([string[]]$Paths)
+    param(
+        [string[]]$Paths,
+        [string]$Label = 'Generated'
+    )
     $seen = @{}
     foreach ($path in $Paths) {
         $normalized = $path.Normalize([System.Text.NormalizationForm]::FormC).ToUpperInvariant()
         if ($seen.ContainsKey($normalized) -and $seen[$normalized] -cne $path) {
-            Add-Failure "Generated paths '$($seen[$normalized])' and '$path' collide by case or Unicode normalization."
+            Add-Failure "$Label paths '$($seen[$normalized])' and '$path' collide by case or Unicode normalization."
         }
         else {
             $seen[$normalized] = $path
@@ -363,6 +476,7 @@ function Test-ScriptSafety {
 function Get-PullRequestContext {
     $context = [ordered]@{
         IsGenerated = $false
+        IsPublicTreeSync = $false
         Title = ''
         Body = ''
         Changed = @()
@@ -382,11 +496,22 @@ function Get-PullRequestContext {
                 $context.Body = [string]$event.pull_request.body
                 $actor = [string]$event.sender.login
                 $head = [string]$event.pull_request.head.ref
-                $context.IsGenerated =
+                $headRepository = [string](Get-JsonPropertyValue $event @('pull_request', 'head', 'repo', 'full_name'))
+                $baseRepository = [string](Get-JsonPropertyValue $event @('repository', 'full_name'))
+                # Public-tree sync mode requires every signal from the same-repository publisher branch.
+                $context.IsPublicTreeSync = (
+                    $head -ceq $publicTreeSyncBranch -and
+                    $title.StartsWith($publicTreeSyncTitlePrefix, [System.StringComparison]::Ordinal) -and
+                    $context.Body.Contains($publicTreeSyncMarker) -and
+                    -not [string]::IsNullOrWhiteSpace($headRepository) -and
+                    $headRepository -ceq $baseRepository
+                )
+                $context.IsGenerated = -not $context.IsPublicTreeSync -and (
                     $title.StartsWith('[Generated publication]', [System.StringComparison]::OrdinalIgnoreCase) -or
                     $context.Body.Contains('<!-- generated-publication -->') -or
                     $actor.EndsWith('[bot]', [System.StringComparison]::OrdinalIgnoreCase) -or
                     $head.StartsWith('publication/', [System.StringComparison]::OrdinalIgnoreCase)
+                )
             }
         }
         catch {
@@ -511,7 +636,11 @@ $pr = Get-PullRequestContext
 $baseState = Get-BasePublicationState
 if ($pr.Title) { Test-ContentSafety 'pull request title' $pr.Title }
 if ($pr.Body) { Test-ContentSafety 'pull request body' $pr.Body }
-if ($pr.IsGenerated) {
+if ($pr.IsPublicTreeSync) {
+    Write-Host 'Validating public tree sync pull request (README.md and intune/** only).'
+    Test-PublicTreeSyncChanges $pr
+}
+elseif ($pr.IsGenerated) {
     foreach ($path in $pr.Touched) {
         if (-not (Test-GeneratedPath $path)) {
             Add-Failure "Generated publication changed hand-maintained path '$path'. Split governance changes from publication."
@@ -877,6 +1006,7 @@ $summary = [ordered]@{
     repository = $RepositoryRoot
     mode = $ValidationMode
     generatedPullRequest = $pr.IsGenerated
+    publicTreeSyncPullRequest = $pr.IsPublicTreeSync
     artifacts = $metadataById.Count
     generatedFiles = $generatedFiles.Count
     failures = $script:Failures

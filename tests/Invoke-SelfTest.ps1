@@ -85,13 +85,19 @@ function Invoke-PullRequestCase {
         [bool]$ShouldPass = $false,
         [scriptblock]$PrepareBase,
         [string]$Title = '[Generated publication] Synthetic validation',
+        [string]$HeadRef = 'publication/synthetic-validation',
+        [string]$HeadRepository = 'synthetic-owner/security-template',
+        [switch]$NoAutoCommit,
         [string]$Body = "<!-- generated-publication -->`n## Publication summary`nSynthetic test`n## Artifacts`nSynthetic test`n## Removals`nNone`n## Validation`nSynthetic test"
     )
     $script:testsRun++
     $repository = New-PullRequestRepository -PrepareBase $PrepareBase
     $eventPath = Join-Path ([IO.Path]::GetTempPath()) "publication-event-$([guid]::NewGuid().ToString('N')).json"
     try {
-        if ($Mutate) {
+        if ($Mutate -and $NoAutoCommit) {
+            & $Mutate $repository.Path
+        }
+        elseif ($Mutate) {
             & $Mutate $repository.Path
             & git -C $repository.Path add --all
             & git -C $repository.Path commit --quiet -m 'candidate'
@@ -101,8 +107,12 @@ function Invoke-PullRequestCase {
             pull_request = [ordered]@{
                 title = $Title
                 body = $Body
-                head = [ordered]@{ ref = 'publication/synthetic-validation' }
+                head = [ordered]@{
+                    ref = $HeadRef
+                    repo = [ordered]@{ full_name = $HeadRepository }
+                }
             }
+            repository = [ordered]@{ full_name = 'synthetic-owner/security-template' }
             sender = [ordered]@{ login = 'publisher[bot]' }
         }
         Write-Utf8Lf $eventPath (($event | ConvertTo-Json -Depth 10) + "`n")
@@ -319,6 +329,172 @@ Invoke-PullRequestCase -Name 'initial artifact retains bootstrap version' `
         Copy-Item -LiteralPath (Join-Path $fixture 'catalog.json') -Destination (Join-Path $path 'catalog.json') -Force
         Copy-Item -LiteralPath (Join-Path $fixture 'generated-manifest.json') -Destination (Join-Path $path 'generated-manifest.json') -Force
         Copy-Item -LiteralPath (Join-Path $fixture 'templates') -Destination (Join-Path $path 'templates') -Recurse -Force
+    }
+
+$publicTreeTitle = '[Public tree sync] Synthetic public tree update'
+$publicTreeBody = "<!-- public-tree-sync -->`nSynthetic public tree sync."
+$preparePublicTreeBase = {
+    param($path)
+    Write-Utf8Lf (Join-Path $path 'README.md') "# Synthetic public README`n"
+    Write-Utf8Lf (Join-Path $path 'LICENSE') "Synthetic license.`n"
+    New-Item -ItemType Directory -Path (Join-Path $path '.github') -Force | Out-Null
+    Write-Utf8Lf (Join-Path $path '.github\CODEOWNERS') "* @synthetic-owner`n"
+    New-Item -ItemType Directory -Path (Join-Path $path 'intune\baseline') -Force | Out-Null
+    Write-Utf8Lf (Join-Path $path 'intune\baseline\existing.json') "{`n  `"fixtureOnly`": true`n}`n"
+    Write-Utf8Lf (Join-Path $path 'intune\baseline\retired.md') "Synthetic retired guidance.`n"
+}
+$commitIndexEntries = {
+    param([string]$Path, [string[]]$Entries)
+    foreach ($entry in $Entries) {
+        $parts = $entry -split '\|', 3
+        $blob = ($parts[2] | & git -C $Path hash-object -w --stdin)
+        & git -C $Path update-index --add --cacheinfo "$($parts[0]),$blob,$($parts[1])"
+        if ($LASTEXITCODE -ne 0) { throw "Unable to stage index entry '$($parts[1])'." }
+    }
+    & git -C $Path commit --quiet -m 'candidate'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to commit index-only candidate.' }
+}
+
+Invoke-PullRequestCase -Name 'public tree sync allows README and intune changes' `
+    -ShouldPass $true `
+    -ExpectedMessage 'Validating public tree sync pull request' `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        Write-Utf8Lf (Join-Path $path 'README.md') "# Synthetic public README`n`nUpdated overview.`n"
+        Write-Utf8Lf (Join-Path $path 'intune\baseline\existing.json') "{`n  `"fixtureOnly`": false`n}`n"
+        New-Item -ItemType Directory -Path (Join-Path $path 'intune\compliance') -Force | Out-Null
+        Write-Utf8Lf (Join-Path $path 'intune\compliance\new-policy.md') "# Synthetic compliance guidance`n"
+        Remove-Item -LiteralPath (Join-Path $path 'intune\baseline\retired.md')
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects governance workflow change' `
+    -ExpectedMessage "Public tree sync changed prohibited path '.github/workflows/sync.yml'" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        New-Item -ItemType Directory -Path (Join-Path $path '.github\workflows') -Force | Out-Null
+        Write-Utf8Lf (Join-Path $path '.github\workflows\sync.yml') "name: synthetic`n"
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects LICENSE deletion' `
+    -ExpectedMessage "Public tree sync changed prohibited path 'LICENSE'" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        Remove-Item -LiteralPath (Join-Path $path 'LICENSE')
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects unrelated file change' `
+    -ExpectedMessage "Public tree sync changed prohibited path 'governance-source.md'" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        Write-Utf8Lf (Join-Path $path 'governance-source.md') "Tampered governance source.`n"
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects generated catalog change' `
+    -ExpectedMessage "Public tree sync changed prohibited path 'catalog.json'" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        $catalogPath = Join-Path $path 'catalog.json'
+        $catalog = Get-Content $catalogPath -Raw | ConvertFrom-Json
+        $catalog.generatedAt = '2026-01-02T00:00:00Z'
+        Write-Utf8Lf $catalogPath (($catalog | ConvertTo-Json -Depth 20) + "`n")
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects README deletion' `
+    -ExpectedMessage 'Public tree sync cannot delete README.md' `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        Remove-Item -LiteralPath (Join-Path $path 'README.md')
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects rename out of intune' `
+    -ExpectedMessage "Public tree sync changed prohibited path 'scripts/existing.json'" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        New-Item -ItemType Directory -Path (Join-Path $path 'scripts') -Force | Out-Null
+        & git -C $path mv intune/baseline/existing.json scripts/existing.json
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects unsafe intune path' `
+    -ExpectedMessage "Public tree sync path 'intune/baseline/unsafe name.md' is unsafe" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        Write-Utf8Lf (Join-Path $path 'intune\baseline\unsafe name.md') "Synthetic.`n"
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects intune symlink' `
+    -ExpectedMessage "Public tree sync path 'intune/baseline/link.json' is a symlink" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -NoAutoCommit `
+    -Mutate {
+        param($path)
+        & $commitIndexEntries $path @('120000|intune/baseline/link.json|../../LICENSE')
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects intune case collision' `
+    -ExpectedMessage "Public tree sync paths 'intune/baseline/Policy.json' and 'intune/baseline/policy.json' collide" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -NoAutoCommit `
+    -Mutate {
+        param($path)
+        & $commitIndexEntries $path @(
+            '100644|intune/baseline/Policy.json|{}',
+            '100644|intune/baseline/policy.json|[]'
+        )
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects private key content' `
+    -ExpectedMessage "Public tree sync file 'intune/baseline/key.md' contains a private key" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        Write-Utf8Lf (Join-Path $path 'intune\baseline\key.md') "-----BEGIN PRIVATE KEY-----`nsynthetic`n"
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync signals from a fork fall back to generated validation' `
+    -ExpectedMessage "Generated publication changed hand-maintained path 'README.md'" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -HeadRepository 'fork-owner/security-template' `
+    -Mutate {
+        param($path)
+        Write-Utf8Lf (Join-Path $path 'README.md') "# Forked README`n"
+    }
+
+Invoke-PullRequestCase -Name 'public tree branch without marker uses generated validation' `
+    -ExpectedMessage "Generated publication changed hand-maintained path 'README.md'" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body 'Synthetic public tree sync without marker.' -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        Write-Utf8Lf (Join-Path $path 'README.md') "# Updated README`n"
+    }
+
+Invoke-PullRequestCase -Name 'public tree signals on another branch use generated validation' `
+    -ExpectedMessage "Generated publication changed hand-maintained path 'README.md'" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree-other' `
+    -Mutate {
+        param($path)
+        Write-Utf8Lf (Join-Path $path 'README.md') "# Updated README`n"
     }
 
 if ($testsRun -le 0) {

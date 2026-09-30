@@ -27,7 +27,10 @@ Thank you for improving ALSO Security Templates.
 Artifact publication pull requests must include the
 `<!-- generated-publication -->` marker and the publication report sections
 defined by the publication contract. Publication automation may modify only
-`templates/**`, `catalog.json`, and `generated-manifest.json`.
+`templates/**`, `catalog.json`, and `generated-manifest.json`. Public tree sync
+pull requests (`publication/public-tree`, `[Public tree sync]` title, and
+`<!-- public-tree-sync -->` marker) may modify only the root `README.md` and
+`intune/**`.
 
 ## Security
 

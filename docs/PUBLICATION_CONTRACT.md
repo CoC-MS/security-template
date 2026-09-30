@@ -139,3 +139,29 @@ or operator details. The same leakage and public-link checks applied to
 generated files also apply to the pull request title and body. Independent
 public-repository validation recomputes all
 checksums and does not trust an internal validation result.
+
+## Public tree sync pull requests
+
+Hand-authored public documentation that is maintained upstream is synchronized
+through a separate, narrowly scoped pull request. The validator recognizes this
+mode only when every condition holds:
+
+- the head branch is exactly `publication/public-tree` in this repository (not
+  a fork);
+- the title begins with `[Public tree sync]`; and
+- the body contains `<!-- public-tree-sync -->`.
+
+In this mode the pull request may add, modify, or delete files only beneath
+`intune/**` and may modify (but not delete) the root `README.md`. Any change,
+rename, or deletion touching `.github`, `LICENSE`, governance documents,
+`schemas`, `scripts`, `tests`, `catalog.json`, `generated-manifest.json`,
+`templates`, or any other path fails validation. Paths must be safe relative
+paths, must not collide by case or Unicode normalization, and must not be
+symlinks or submodules. Changed files must not use forbidden binary extensions,
+exceed 5 MiB, or contain private keys or secret-like values. The pull request
+title and body receive the same leakage checks as generated publications.
+
+If any condition is missing, the pull request is validated under the existing
+generated-publication or hand-maintained rules instead, so a
+`publication/public-tree` branch without the full title and marker is rejected
+by the generated path allowlist.

@@ -84,7 +84,7 @@ Describe 'Public publication validator' {
         Invoke-TestValidator $path | Should -Not -Be 0
     }
 
-    It 'passes git-backed ownership, deletion, orphan, removal, and PR leakage regressions' {
+    It 'passes git-backed ownership, deletion, orphan, removal, PR leakage, and public tree sync regressions' {
         & $script:Pwsh -NoLogo -NoProfile -File (Join-Path $PSScriptRoot 'Invoke-SelfTest.ps1') *> $null
         $LASTEXITCODE | Should -Be 0
     }
