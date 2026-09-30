@@ -1,183 +1,164 @@
-# ALSO Security Templates
-## About the Security Templates
+# 🛡️ ALSO Security Template
 
-The ALSO Security Templates project is designed to help partners implement
-Microsoft security solutions faster, more consistently and at scale.
+> A collection of Microsoft Intune policy exports and supporting artifacts designed to help partners accelerate secure, managed endpoint deployments across Windows, Windows Server, macOS, iOS/iPadOS, Android, and Linux.
+>
+> **Works with Microsoft 365 Business Premium and higher licences, depending on the policy.**
 
-The repository brings together tested configuration templates, policies,
-scripts, automation and practical documentation for Microsoft Intune,
-Defender, Purview, and Entra. Instead of starting every customer implementation from
-scratch, partners can use the project as a structured starting point and
-adapt the content to the customer's requirements.
+---
 
-Our goal is to reduce repetitive configuration work, simplify deployment
-and make Microsoft security capabilities easier to adopt across customer
-environments.
+> [!IMPORTANT]
+> **⚠️ Read this before importing policies.**
+>
+> Every export is a starting point. Review settings, tenant-specific values, licences, dependencies, and assignments before deployment. Import policies to a pilot group first and validate their outcome before expanding assignments.
 
-The project is built around three principles:
+| Resource | Description |
+| --- | --- |
+| 📖 **Naming Convention** | See [Policy naming](#-policy-naming) for the standard format and exceptions. |
+| 🚀 **Before Importing** | See [Before importing](#-before-importing) for import order and configuration requirements. |
+| 📥 **How to Import** | See [How to import](#-how-to-import) for the Intune Management Tool workflow. |
+| 🪟 **Windows Server** | Copy the server-specific policy exports from [`Windows Server/SettingsCatalog`](Windows%20Server/SettingsCatalog). |
+| ⚙️ **Settings Catalog** | See [Settings Catalog naming](SecurityTemplateDev/SettingsCatalog/NAMING-CONVENTION.md). |
+| 🩺 **Device Health Scripts** | See [Device Health Scripts naming](SecurityTemplateDev/DeviceHealthScripts/NAMING-CONVENTION.md). |
 
-- **Make deployment easier** by providing ready-to-use starting points
-- **Improve consistency** through reusable and tested configurations
-- **Help partners scale** by reducing the time required for each implementation
+---
 
-The templates are deployment accelerators, not universal configurations.
-Partners remain responsible for reviewing, testing and adapting the content
-before deploying it in a customer environment.
+## 📂 File structure
 
-## Who this project is for
+The template is organized by Intune workload:
 
-The ALSO Security Templates project is intended primarily for:
+```text
+SecurityTemplateDev/
+├── AdministrativeTemplates/
+├── ADMXFiles/
+├── AppConfigurationManagedApp/
+├── AppConfigurationManagedDevice/
+├── Applications/
+├── AppProtection/
+├── AssignmentFilters/
+├── AuthenticationContext/
+├── AuthenticationStrengths/
+├── AutoPilot/
+├── CompliancePolicies/
+├── ComplianceScripts/
+├── DeviceConfiguration/
+├── DeviceHealthScripts/
+├── DriverUpdateProfiles/
+├── EnrollmentStatusPage/
+├── HardwareConfigurations/
+├── PolicySets/
+├── PowerShellScripts/
+├── QualityUpdatePolicies/
+├── ReusableSettings/
+├── SettingsCatalog/
+└── UpdatePolicies/
 
-- Microsoft partners
-- Managed service providers
-- Security consultants
-- Microsoft 365 administrators
-- Endpoint and identity administrators
-- Technical teams responsible for customer implementation and operations
+Windows Server/
+└── SettingsCatalog/
+```
 
-The project assumes that the implementing partner understands the relevant
-Microsoft products and can evaluate the impact of configuration changes in
-a customer environment.
+## 📦 Endpoint Configuration builds
 
-The templates do not replace technical assessment, solution design,
-professional judgement or customer-specific implementation planning.
+Use `tools/New-EndpointConfigurationBuild.ps1` to generate import packages. The
+reviewed source remains in `SecurityTemplateDev`, but every generated package
+uses `EndpointConfiguration` as its root directory and preserves the workload
+folder structure shown above.
 
-## Published artifact contract
+```powershell
+pwsh ./tools/New-EndpointConfigurationBuild.ps1
+```
 
-Public artifacts are published under
-`templates/<solution-area>/<component>/<stable-artifact-id>/`. Each artifact
-contains `template.json`, `metadata.json`, and `README.md`, with optional
-deployment files or scripts. The generated `catalog.json` and
-`generated-manifest.json` provide discovery and integrity information.
+The default command creates `Basic-BP`, `Basic-E3-E5`, `Basic-E5`, `Adv-BP`,
+`Adv-E3-E5`, `Adv-E5`, and `Full` packages under
+`out/endpoint-configuration`. Licence builds are cumulative: `E3-E5` includes
+`BP`, and `E5` includes `BP` and `E3-E5`. Basic and Adv packages contain only
+files explicitly marked with both the matching tier and a supported licence.
+Shared or unclassified resources are intentionally available only in Full.
 
-The supported solution-area path names are `intune`, `defender`, `purview`,
-and `entra`. See [the publication contract](docs/PUBLICATION_CONTRACT.md) for
-the stable-ID, versioning, compatibility, documentation, and generated-path
-rules. Governance files, schemas, validation, and repository policy remain
-hand-maintained.
+> [!WARNING]
+> **Choose one package for a tenant. Do not combine Basic, Adv, and Full, or
+> import Full after another package.** Intune imports can create duplicate
+> policies rather than reconcile packages. Each generated package includes a
+> `BUILD-INFO.md` with the same warning and its exact scope.
 
-The catalog is currently empty while the first controlled artifact publication
-is prepared. Once populated, start with [`catalog.json`](catalog.json), follow
-an artifact's `path` to its public `README.md`, review its metadata and
-prerequisites, and use only the deployment/import procedure documented there.
-Validator fixtures under `tests/fixtures/**` are synthetic test data and are
-not published artifacts.
+Windows Server policies remain separate and are not included in these endpoint
+configuration packages.
 
-Repository releases use immutable `publication-v<major>.<minor>.<patch>` tags.
-See the [release process](docs/RELEASE_PROCESS.md) for the human approval,
-versioning, validation, and verification requirements.
+## 🌐 Platform coverage
 
-## Important usage notice
+The template contains configurations for the following platforms. Availability depends on the individual Intune workload and policy.
 
-The ALSO Security Template provides tested configuration templates,
-policies, scripts, automation and supporting documentation intended
-to accelerate Microsoft security deployments.
+| Platform | Typical template content |
+| --- | --- |
+| 🪟 **Windows** | Configuration, security baseline, Defender, update rings, Autopilot, scripts, and hardware configuration. |
+| 🖥️ **Windows Server** | Separate Settings Catalog exports for Windows Server security and Defender configurations. |
+| 🍎 **macOS** | Device configuration, Microsoft Defender, Microsoft Edge, disk encryption, firewall, and single sign-on settings. |
+| 📱 **iOS/iPadOS** | Device restrictions, passcode, VPN, update, and enrollment policies. |
+| 🤖 **Android** | Enterprise and BYOD device configuration, enrollment, and security controls. |
+| 🐧 **Linux** | Selected endpoint security configurations where supported by Intune. |
 
-ALSO makes reasonable efforts to test and validate the content before
-it is published. However, every customer environment is different.
-Licensing, existing configurations, integrations, device platforms,
-network architecture, regulatory requirements and other environmental
-variables may affect how the solution operates.
+### Windows Server
 
-ALSO cannot guarantee that the content is suitable for every customer
-environment or that it will operate without errors, interruptions,
-conflicts or unintended effects.
+Windows Server policies are intentionally kept outside `SecurityTemplateDev` in [`Windows Server/SettingsCatalog`](Windows%20Server/SettingsCatalog). This lets partners copy and paste the server-specific exports independently, without mixing them with workstation policies.
 
-## The implementing partner is responsible for:
+## ✨ Notable capabilities
 
-- Reviewing the configuration, policy or script
-- Confirming product licensing and technical prerequisites
-- Assessing compatibility with the customer's existing environment
-- Testing the content in a dedicated test or pilot environment
-- Planning an appropriate staged rollout
-- Monitoring the results and validating the intended outcome
-- Maintaining a documented rollback or recovery plan
+- **Weekly scheduled restart:** a Windows Settings Catalog policy schedules an automatic reboot at 00:00 every Wednesday.
+- **Automatic disk cleanup:** a Windows Settings Catalog policy cleans files in Downloads and Recycle Bin that have not been used for 365 days.
+- **Windows Hotpatch:** the template includes Hotpatch remediation, VBS prerequisite settings, and the Windows Hotpatch quality-update policy used with Windows Autopatch.
 
-The partner should not deploy the solution directly across an entire
-production environment without prior validation.
+## 📖 Policy naming
 
-Use of this project is at the user's own risk. To the extent permitted
-by applicable law, ALSO is not liable for loss, damage, service
-interruption, data loss, configuration changes, security incidents or
-other consequences resulting from the use or application of this
-project.
+Most policy exports use this format:
 
-This notice does not replace the terms and conditions of the Apache
-License 2.0. If there is a conflict, the Apache License 2.0 governs.
+```text
+<Licence> - <Company> - <Impact> - <Tier> - <Version> - <Platform> - <Category> - <Policy purpose> - <Scope>
+```
 
-## Recommended deployment approach
+### Naming components
 
-All templates, policies and scripts should follow a controlled deployment
-process:
+| Component | Description | Examples |
+| --- | --- | --- |
+| `Licence` | Minimum licence requirement | `BP`, `E3-E5`, `E5` |
+| `Company` | Template provider | `ALSO` |
+| `Impact` | Expected implementation impact | `LI`, `MI`, `HI` |
+| `Tier` | Baseline tier | `Basic`, `Adv` |
+| `Version` | Policy version | `v1.0`, `v3.6` |
+| `Platform` | Target platform | `Windows`, `macOS`, `Android` |
+| `Category` | Intune or security area | `Device Security`, `Defender` |
+| `Policy purpose` | What the policy configures | `Disable AutoRun` |
+| `Scope` | Assignment scope when applicable | `D`, `U` |
 
-1. **Review**  
-   Understand what the configuration changes, which services it affects
-   and which licences or prerequisites it requires.
+`D` identifies a device-targeted policy and `U` identifies a user-targeted policy. Use ` - ` as the separator; do not use `/` because Intune does not support it in policy names.
 
-2. **Test**  
-   Deploy the content in a dedicated test tenant or non-production
-   environment.
+### Short-name exceptions
 
-3. **Pilot**  
-   Apply the change to a small and representative pilot group.
+Some Intune resources have restrictive name-length limits. Compliance policies, assignment filters, and similar general resources therefore use a shorter `ALSO`-prefixed name rather than the complete convention. The short name is intentional and allows successful Intune import and management.
 
-4. **Validate**  
-   Confirm that the expected security and operational outcomes are
-   achieved without conflicts or unintended effects.
+Autopilot profiles are also an exception. Intune requires underscore-delimited names:
 
-5. **Roll out**  
-   Expand the deployment gradually using a controlled, staged approach.
+```text
+<Licence>_<Company>_<Impact>_<Tier>_<Version>_<Platform>_Autopilot Profile_<Purpose>
+```
 
-6. **Monitor**  
-   Monitor deployment status, user impact, alerts and operational results.
+## 🚀 Before importing
 
-7. **Recover**  
-   Maintain a documented rollback or recovery approach for each
-   production deployment.
+1. Review each policy's settings and description, especially tenant-specific values, assignments, update rings, and security controls.
+2. Import required ADMX files from `SecurityTemplateDev/ADMXFiles` before importing Administrative Template policies that depend on them.
+3. Configure the OneDrive ShortPath Administrative Template for the customer's intended OneDrive folder path before assigning it. It requires the OneDrive and Windows ADMX files.
+4. Copy Windows Server exports from `Windows Server/SettingsCatalog` only when deploying to Windows Server.
+5. Import to a pilot group, validate the result in Intune, then expand assignments in stages.
 
-## Reporting issues
+## 📥 How to import
 
-See [How to report issues](Issues.md) for step-by-step instructions
-on choosing a form, preparing a useful report, and removing sensitive data.
+This template uses the same import workflow as the ALSO Microsoft Security Conditional Access templates: [Micke M Intune Management Tool](https://github.com/Micke-K/IntuneManagement).
 
-Partners, consultants, administrators, and contributors can use the [issue forms](../../issues/new/choose) to report bugs, request improvements, or correct documentation and licensing guidance.
+1. Download and extract the Intune Management Tool.
+2. Start `start.cmd`. The tool opens a command window and its web interface; local administrator rights are not required on Windows or macOS.
+3. Select the sign-in icon in the upper-right corner and authenticate to the target Microsoft Intune tenant with an account that has the required Intune permissions.
+4. Import the required ADMX files from `SecurityTemplateDev/ADMXFiles` before importing dependent Administrative Template policies.
+5. In the tool, browse to the reviewed export file and import the matching JSON resource. For Device Health Scripts, keep each JSON file with its paired `_DetectionScript.ps1` and `_RemediationScript.ps1` files.
+6. Review the imported policy in Intune before assignment. Update tenant-specific values, groups, filters, OneDrive folder paths, update rings, and scope as required.
+7. Assign the policy to a pilot group. Confirm the deployment result and user impact before expanding to production.
 
-Choose the form that best matches your report:
-
-- **Bug report** - for reproducible problems with templates, scripts, validation, deployment tooling, or documentation.
-- **Feature or policy request** - for a new capability, configuration policy, automation, validation check, or integration.
-- **Documentation or licensing correction** - for inaccurate, missing, outdated, or unclear public guidance.
-
-Before submitting, search existing issues to avoid duplicates. Include only the details needed to understand and reproduce the problem, using a sanitized test example where possible.
-
-Do not include customer information, tenant identifiers, user details, credentials, secrets, access tokens, certificates, or sensitive logs. Do not report security vulnerabilities in a public issue; follow the repository's private reporting process in `SECURITY.md`. For usage questions and implementation guidance, see `SUPPORT.md`.
-
-## Disclaimer and limitation of liability
-
-The materials in this repository, including policies, configuration
-templates, scripts, automation, documentation and examples, are provided
-on an "as is" and "as available" basis.
-
-Although ALSO performs testing and validation before publication, ALSO
-does not warrant or guarantee that the materials are error-free, suitable
-for a particular purpose, compatible with every customer environment or
-capable of producing a specific security, compliance or operational
-outcome.
-
-Customer environments may contain variables outside ALSO's knowledge or
-control, including existing configurations, third-party products,
-licensing limitations, unsupported platforms, network dependencies,
-regulatory requirements and changes to Microsoft products or services.
-
-The implementing partner is responsible for evaluating the materials,
-confirming all prerequisites and dependencies, testing in a non-production
-environment, conducting a controlled pilot, planning a staged rollout and
-maintaining appropriate rollback and recovery procedures.
-
-To the extent permitted by applicable law, ALSO shall not be liable for
-any direct, indirect, incidental, special, consequential or other loss or
-damage arising from the use of, inability to use or deployment of the
-materials in this repository.
-
-This disclaimer supplements the Apache License 2.0. It does not replace,
-amend or override the terms contained in the LICENSE file.
+> [!WARNING]
+> Bulk importing the template without assignments is supported. Do not bulk import assignments: policies can contain security controls, restart behavior, update deadlines, and tenant-specific values that must be reviewed and approved before assignment to the target environment.
