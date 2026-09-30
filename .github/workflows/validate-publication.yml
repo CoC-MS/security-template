@@ -43,6 +43,7 @@ jobs:
         run: |
           $validator = './scripts/Validate-Publication.ps1'
           $policy = './.github/publication-path-policy.json'
+          $schemaRoot = Join-Path $env:GITHUB_WORKSPACE 'schemas'
           if ($env:BASE_SHA) {
             $baseValidator = Join-Path $env:RUNNER_TEMP 'Validate-Publication.base.ps1'
             $basePolicy = Join-Path $env:RUNNER_TEMP 'publication-path-policy.base.json'
@@ -56,11 +57,33 @@ jobs:
             else {
               Write-Warning 'Protected base does not yet contain the validator policy; using candidate bootstrap version.'
             }
+            if (-not (Test-Path -LiteralPath $schemaRoot -PathType Container)) {
+              $schemaRoot = Join-Path $env:RUNNER_TEMP 'schemas.base'
+              New-Item -ItemType Directory -Path $schemaRoot -Force | Out-Null
+              $schemaPaths = @(& git -C $env:GITHUB_WORKSPACE ls-tree -r --name-only $env:BASE_SHA -- schemas)
+              if ($LASTEXITCODE -ne 0 -or $schemaPaths.Count -eq 0) {
+                throw 'Protected base does not contain the publication schemas.'
+              }
+              foreach ($schemaPath in $schemaPaths) {
+                $relativePath = $schemaPath.Substring('schemas/'.Length)
+                $targetPath = Join-Path $schemaRoot $relativePath
+                New-Item -ItemType Directory -Path (Split-Path -Parent $targetPath) -Force | Out-Null
+                $schemaText = @(& git -C $env:GITHUB_WORKSPACE show "${env:BASE_SHA}:$schemaPath")
+                if ($LASTEXITCODE -ne 0) {
+                  throw "Unable to read protected-base schema '$schemaPath'."
+                }
+                [System.IO.File]::WriteAllText(
+                  $targetPath,
+                  ([string]::Join("`n", $schemaText) + "`n"),
+                  [System.Text.UTF8Encoding]::new($false)
+                )
+              }
+            }
           }
           $parameters = @{
             RepositoryRoot = $env:GITHUB_WORKSPACE
             ReportPath = 'validation-report.json'
-            SchemaRoot = (Join-Path $env:GITHUB_WORKSPACE 'schemas')
+            SchemaRoot = $schemaRoot
             PolicyPath = $policy
           }
           if ($env:BASE_SHA) {
@@ -73,10 +96,12 @@ jobs:
           & $validator @parameters
 
       - name: Run dependency-free validator tests
+        if: hashFiles('tests/Invoke-SelfTest.ps1') != ''
         shell: pwsh
         run: ./tests/Invoke-SelfTest.ps1
 
       - name: Run pinned Pester suite
+        if: hashFiles('tests/Invoke-Pester.ps1') != ''
         shell: pwsh
         run: ./tests/Invoke-Pester.ps1
 

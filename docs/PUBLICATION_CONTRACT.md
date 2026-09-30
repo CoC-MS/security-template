@@ -152,14 +152,22 @@ mode only when every condition holds:
 - the body contains `<!-- public-tree-sync -->`.
 
 In this mode the pull request may add, modify, or delete files only beneath
-`intune/**` and may modify (but not delete) the root `README.md`. Any change,
-rename, or deletion touching `.github`, `LICENSE`, governance documents,
-`schemas`, `scripts`, `tests`, `catalog.json`, `generated-manifest.json`,
-`templates`, or any other path fails validation. Paths must be safe relative
-paths, must not collide by case or Unicode normalization, and must not be
-symlinks or submodules. Changed files must not use forbidden binary extensions,
-exceed 5 MiB, or contain private keys or secret-like values. The pull request
-title and body receive the same leakage checks as generated publications.
+`intune/**` and may modify (but not delete) the root `README.md`. A single
+cleanup may also delete the exact legacy file inventory pinned in the protected
+validator, but only when every such path exists in the protected base and all
+of those paths are deleted together. It cannot change those files, delete any
+additional path, or add files outside the final public-root allowlist. The
+candidate tree must contain only `README.md`, `intune/**`, `LICENSE`, and
+`.github/ISSUE_TEMPLATE/**`. `LICENSE` and every protected-base
+`.github/ISSUE_TEMPLATE/**` file must remain byte-for-byte unchanged. Once the
+legacy inventory is removed, future syncs can change only `README.md` and
+`intune/**`.
+
+Paths must be safe relative paths, must not collide by case or Unicode
+normalization, and must not be symlinks or submodules. Changed files must not
+use forbidden binary extensions, exceed 5 MiB, or contain private keys or
+secret-like values. The pull request title and body receive the same leakage
+checks as generated publications.
 
 If any condition is missing, the pull request is validated under the existing
 generated-publication or hand-maintained rules instead, so a

@@ -39,6 +39,36 @@ $reservedWindowsNames = '^(?i)(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)'
 $publicTreeSyncBranch = 'publication/public-tree'
 $publicTreeSyncTitlePrefix = '[Public tree sync]'
 $publicTreeSyncMarker = '<!-- public-tree-sync -->'
+$publicTreeCleanupPaths = @(
+    '.gitattributes',
+    '.github/CODEOWNERS',
+    '.github/publication-path-policy.json',
+    '.github/pull_request_template.md',
+    '.github/workflows/validate-publication.yml',
+    'CONTRIBUTING.md',
+    'Issues.md',
+    'SECURITY.md',
+    'SUPPORT.md',
+    'catalog.json',
+    'docs/PUBLICATION_CONTRACT.md',
+    'docs/RELEASE_PROCESS.md',
+    'docs/REPOSITORY_GOVERNANCE.md',
+    'generated-manifest.json',
+    'schemas/artifact-metadata.schema.json',
+    'schemas/catalog.schema.json',
+    'schemas/deployment-inputs.schema.json',
+    'schemas/generated-manifest.schema.json',
+    'scripts/Validate-Publication.ps1',
+    'tests/Invoke-Pester.ps1',
+    'tests/Invoke-SelfTest.ps1',
+    'tests/PublicPublication.Tests.ps1',
+    'tests/fixtures/valid/catalog.json',
+    'tests/fixtures/valid/generated-manifest.json',
+    'tests/fixtures/valid/templates/entra/conditional-access/synthetic-policy-fixture/README.md',
+    'tests/fixtures/valid/templates/entra/conditional-access/synthetic-policy-fixture/metadata.json',
+    'tests/fixtures/valid/templates/entra/conditional-access/synthetic-policy-fixture/template.json'
+)
+$publicTreePreservedPathPrefix = '.github/ISSUE_TEMPLATE/'
 
 function Add-Failure {
     param([string]$Message)
@@ -242,16 +272,103 @@ function Test-PublicTreeSyncPath {
     return $Path -ceq 'README.md' -or $Path -cmatch '^intune/[^/]'
 }
 
+function Get-PublicTreeEntries {
+    param([string]$Ref)
+
+    $lines = @(& git -C $RepositoryRoot ls-tree -r --full-tree $Ref)
+    if ($LASTEXITCODE -ne 0) {
+        throw "git ls-tree exited with code $LASTEXITCODE for '$Ref'"
+    }
+    foreach ($line in $lines) {
+        $parts = $line -split "`t", 2
+        if ($parts.Count -ne 2) { continue }
+        $metadata = $parts[0] -split ' '
+        if ($metadata.Count -lt 3) { continue }
+        [pscustomobject]@{
+            Path = $parts[1].Replace('\', '/')
+            Mode = $metadata[0]
+            Blob = $metadata[2]
+        }
+    }
+}
+
+function Test-PublicTreeSyncPreservedPaths {
+    param(
+        [object[]]$BaseEntries,
+        [object[]]$CandidateEntries
+    )
+
+    $basePreserved = @($BaseEntries | Where-Object {
+        $_.Path -ceq 'LICENSE' -or $_.Path.StartsWith($publicTreePreservedPathPrefix, [System.StringComparison]::Ordinal)
+    })
+    $candidatePreserved = @($CandidateEntries | Where-Object {
+        $_.Path -ceq 'LICENSE' -or $_.Path.StartsWith($publicTreePreservedPathPrefix, [System.StringComparison]::Ordinal)
+    })
+    if (@($basePreserved | Where-Object { $_.Path -ceq 'LICENSE' }).Count -ne 1 -or
+        @($basePreserved | Where-Object { $_.Path.StartsWith($publicTreePreservedPathPrefix, [System.StringComparison]::Ordinal) }).Count -eq 0) {
+        Add-Failure 'Protected base must contain LICENSE and .github/ISSUE_TEMPLATE/** before public tree sync.'
+        return
+    }
+    if ($basePreserved.Count -ne $candidatePreserved.Count) {
+        Add-Failure 'Public tree sync must preserve LICENSE and every .github/ISSUE_TEMPLATE/** path byte-for-byte.'
+        return
+    }
+
+    $candidateByPath = @{}
+    foreach ($entry in $candidatePreserved) {
+        $candidateByPath[$entry.Path] = $entry
+    }
+    foreach ($entry in $basePreserved) {
+        if (-not $candidateByPath.ContainsKey($entry.Path) -or
+            $candidateByPath[$entry.Path].Mode -cne $entry.Mode -or
+            $candidateByPath[$entry.Path].Blob -cne $entry.Blob) {
+            Add-Failure "Public tree sync must preserve '$($entry.Path)' byte-for-byte."
+        }
+    }
+}
+
 function Test-PublicTreeSyncChanges {
     param([object]$Context)
 
     $deleted = @($Context.Deleted)
+    $baseEntries = @()
+    $candidateEntries = @()
+    $approvedCleanup = $false
+    try {
+        $baseEntries = @(Get-PublicTreeEntries $Context.BaseRef)
+        $candidateEntries = @(Get-PublicTreeEntries 'HEAD')
+    }
+    catch {
+        Add-Failure "Unable to inspect public tree sync trees: $($_.Exception.Message)"
+    }
+
+    $legacyDeleted = @($deleted | Where-Object { -not (Test-PublicTreeSyncPath $_) })
+    if ($legacyDeleted.Count -gt 0) {
+        $baseLegacyPaths = @($baseEntries | Where-Object {
+            -not (Test-PublicTreeSyncPath $_.Path) -and
+            $_.Path -cne 'LICENSE' -and
+            -not $_.Path.StartsWith($publicTreePreservedPathPrefix, [System.StringComparison]::Ordinal)
+        } | ForEach-Object { $_.Path } | Sort-Object -CaseSensitive)
+        $deletedSorted = @($legacyDeleted | Sort-Object -CaseSensitive)
+        $approvedSorted = @($publicTreeCleanupPaths | Sort-Object -CaseSensitive)
+        $approvedCleanup = (
+            $baseLegacyPaths.Count -eq $approvedSorted.Count -and
+            $deletedSorted.Count -eq $approvedSorted.Count -and
+            [string]::Join("`n", $baseLegacyPaths) -ceq [string]::Join("`n", $approvedSorted) -and
+            [string]::Join("`n", $deletedSorted) -ceq [string]::Join("`n", $approvedSorted)
+        )
+        if (-not $approvedCleanup) {
+            Add-Failure 'Public tree sync may delete legacy paths only as the exact one-time approved cleanup set.'
+        }
+    }
+
     foreach ($path in $Context.Touched) {
         if (-not (Test-SafeRelativePath $path)) {
             Add-Failure "Public tree sync path '$path' is unsafe."
             continue
         }
-        if (-not (Test-PublicTreeSyncPath $path)) {
+        if (-not (Test-PublicTreeSyncPath $path) -and
+            -not ($approvedCleanup -and $deleted -ccontains $path -and $publicTreeCleanupPaths -ccontains $path)) {
             Add-Failure "Public tree sync changed prohibited path '$path'. Only README.md and intune/** may change."
             continue
         }
@@ -260,32 +377,30 @@ function Test-PublicTreeSyncChanges {
         }
     }
 
-    $candidateEntries = @()
-    try {
-        $candidateEntries = @(& git -C $RepositoryRoot ls-tree -r --full-tree HEAD -- README.md intune)
-        if ($LASTEXITCODE -ne 0) { throw "git ls-tree exited with code $LASTEXITCODE" }
-    }
-    catch {
-        Add-Failure "Unable to inspect public tree sync candidate tree: $($_.Exception.Message)"
-    }
     $candidatePaths = [System.Collections.Generic.List[string]]::new()
     foreach ($entry in $candidateEntries) {
-        $parts = $entry -split "`t", 2
-        if ($parts.Count -ne 2) { continue }
-        $mode = ($parts[0] -split ' ')[0]
-        $path = $parts[1]
+        $path = $entry.Path
         $candidatePaths.Add($path)
-        if ($mode -eq '120000') {
+        if ($entry.Mode -eq '120000') {
             Add-Failure "Public tree sync path '$path' is a symlink."
         }
-        elseif ($mode -eq '160000') {
+        elseif ($entry.Mode -eq '160000') {
             Add-Failure "Public tree sync path '$path' is a submodule."
         }
         elseif (-not (Test-SafeRelativePath $path)) {
             Add-Failure "Public tree sync path '$path' is unsafe."
         }
+        if (-not (Test-PublicTreeSyncPath $path) -and
+            $path -cne 'LICENSE' -and
+            -not $path.StartsWith($publicTreePreservedPathPrefix, [System.StringComparison]::Ordinal)) {
+            Add-Failure "Public tree sync candidate contains path '$path' outside the approved public root."
+        }
+    }
+    if (@($candidateEntries | Where-Object { $_.Path -ceq 'README.md' }).Count -ne 1) {
+        Add-Failure 'Public tree sync candidate must retain the root README.md.'
     }
     Test-NormalizedCollisions -Paths $candidatePaths.ToArray() -Label 'Public tree sync'
+    Test-PublicTreeSyncPreservedPaths -BaseEntries $baseEntries -CandidateEntries $candidateEntries
 
     $intuneRoot = Join-Path $RepositoryRoot 'intune'
     if (Test-Path -LiteralPath $intuneRoot) {
@@ -477,6 +592,7 @@ function Get-PullRequestContext {
     $context = [ordered]@{
         IsGenerated = $false
         IsPublicTreeSync = $false
+        BaseRef = $BaseRef
         Title = ''
         Body = ''
         Changed = @()
@@ -558,6 +674,8 @@ function Get-PullRequestContext {
 }
 
 function Get-BasePublicationState {
+    param([switch]$SkipGeneratedState)
+
     $state = [ordered]@{
         Files = @()
         MetadataById = @{}
@@ -575,6 +693,9 @@ function Get-BasePublicationState {
         $state.Files = @($files | ForEach-Object { $_.Replace('\', '/') })
         $state.HasCatalog = $state.Files -ccontains 'catalog.json'
         $state.HasManifest = $state.Files -ccontains 'generated-manifest.json'
+        if ($SkipGeneratedState) {
+            return $state
+        }
         if ($state.HasCatalog) {
             $rawCatalog = (& git -C $RepositoryRoot show "${BaseRef}:catalog.json") -join "`n"
             if ($LASTEXITCODE -ne 0) { throw 'git show failed for catalog.json' }
@@ -633,11 +754,11 @@ if ($ValidationMode -eq 'Auto') {
 Write-Host "Validating public publication contract in $RepositoryRoot"
 Test-SchemaContracts
 $pr = Get-PullRequestContext
-$baseState = Get-BasePublicationState
+$baseState = Get-BasePublicationState -SkipGeneratedState:$pr.IsPublicTreeSync
 if ($pr.Title) { Test-ContentSafety 'pull request title' $pr.Title }
 if ($pr.Body) { Test-ContentSafety 'pull request body' $pr.Body }
 if ($pr.IsPublicTreeSync) {
-    Write-Host 'Validating public tree sync pull request (README.md and intune/** only).'
+    Write-Host 'Validating public tree sync pull request.'
     Test-PublicTreeSyncChanges $pr
 }
 elseif ($pr.IsGenerated) {
@@ -855,7 +976,7 @@ else {
     $null
 }
 
-if ($ValidationMode -eq 'PullRequest') {
+if ($ValidationMode -eq 'PullRequest' -and -not $pr.IsPublicTreeSync) {
     if ($pr.Deleted -ccontains 'catalog.json') {
         Add-Failure 'Deleting catalog.json is prohibited; publish an updated catalog with explicit removals.'
     }
