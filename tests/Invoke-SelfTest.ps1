@@ -11,6 +11,35 @@ $policy = Join-Path $repositoryRoot '.github\publication-path-policy.json'
 $schemas = Join-Path $repositoryRoot 'schemas'
 $pwsh = (Get-Process -Id $PID).Path
 $testsRun = 0
+$publicTreeCleanupPaths = @(
+    '.gitattributes',
+    '.github/CODEOWNERS',
+    '.github/publication-path-policy.json',
+    '.github/pull_request_template.md',
+    '.github/workflows/validate-publication.yml',
+    'CONTRIBUTING.md',
+    'Issues.md',
+    'SECURITY.md',
+    'SUPPORT.md',
+    'catalog.json',
+    'docs/PUBLICATION_CONTRACT.md',
+    'docs/RELEASE_PROCESS.md',
+    'docs/REPOSITORY_GOVERNANCE.md',
+    'generated-manifest.json',
+    'schemas/artifact-metadata.schema.json',
+    'schemas/catalog.schema.json',
+    'schemas/deployment-inputs.schema.json',
+    'schemas/generated-manifest.schema.json',
+    'scripts/Validate-Publication.ps1',
+    'tests/Invoke-Pester.ps1',
+    'tests/Invoke-SelfTest.ps1',
+    'tests/PublicPublication.Tests.ps1',
+    'tests/fixtures/valid/catalog.json',
+    'tests/fixtures/valid/generated-manifest.json',
+    'tests/fixtures/valid/templates/entra/conditional-access/synthetic-policy-fixture/README.md',
+    'tests/fixtures/valid/templates/entra/conditional-access/synthetic-policy-fixture/metadata.json',
+    'tests/fixtures/valid/templates/entra/conditional-access/synthetic-policy-fixture/template.json'
+)
 
 function New-FixtureCopy {
     $path = Join-Path ([System.IO.Path]::GetTempPath()) "publication-validator-$([guid]::NewGuid().ToString('N'))"
@@ -56,6 +85,17 @@ function Write-Utf8Lf {
     )
     $utf8 = [Text.UTF8Encoding]::new($false)
     [IO.File]::WriteAllText($Path, $Content.Replace("`r`n", "`n").Replace("`r", "`n"), $utf8)
+}
+
+function Set-TestTreeFile {
+    param(
+        [string]$Root,
+        [string]$RelativePath,
+        [string]$Content
+    )
+    $path = Join-Path $Root $RelativePath.Replace('/', [System.IO.Path]::DirectorySeparatorChar)
+    New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
+    Write-Utf8Lf $path $Content
 }
 
 function New-PullRequestRepository {
@@ -335,13 +375,34 @@ $publicTreeTitle = '[Public tree sync] Synthetic public tree update'
 $publicTreeBody = "<!-- public-tree-sync -->`nSynthetic public tree sync."
 $preparePublicTreeBase = {
     param($path)
-    Write-Utf8Lf (Join-Path $path 'README.md') "# Synthetic public README`n"
-    Write-Utf8Lf (Join-Path $path 'LICENSE') "Synthetic license.`n"
-    New-Item -ItemType Directory -Path (Join-Path $path '.github') -Force | Out-Null
-    Write-Utf8Lf (Join-Path $path '.github\CODEOWNERS') "* @synthetic-owner`n"
-    New-Item -ItemType Directory -Path (Join-Path $path 'intune\baseline') -Force | Out-Null
-    Write-Utf8Lf (Join-Path $path 'intune\baseline\existing.json') "{`n  `"fixtureOnly`": true`n}`n"
-    Write-Utf8Lf (Join-Path $path 'intune\baseline\retired.md') "Synthetic retired guidance.`n"
+    Get-ChildItem -LiteralPath $path -Force | Remove-Item -Recurse -Force
+    & $script:SetPublicTreeBaseFiles $path
+}
+$script:SetPublicTreeBaseFiles = {
+    param($path)
+    Set-TestTreeFile $path 'README.md' "# Synthetic public README`n"
+    Set-TestTreeFile $path 'LICENSE' "Synthetic license.`n"
+    Set-TestTreeFile $path '.github/ISSUE_TEMPLATE/bug_report.yml' "name: Bug report`n"
+    Set-TestTreeFile $path '.github/ISSUE_TEMPLATE/config.yml' "blank_issues_enabled: false`n"
+    Set-TestTreeFile $path '.github/ISSUE_TEMPLATE/documentation_or_licensing_correction.yml' "name: Documentation correction`n"
+    Set-TestTreeFile $path '.github/ISSUE_TEMPLATE/feature_or_policy_request.yml' "name: Feature request`n"
+    Set-TestTreeFile $path 'intune/baseline/existing.json' "{`n  `"fixtureOnly`": true`n}`n"
+    Set-TestTreeFile $path 'intune/baseline/retired.md' "Synthetic retired guidance.`n"
+}
+$preparePublicTreeCleanupBase = {
+    param($path)
+    Get-ChildItem -LiteralPath $path -Force | Remove-Item -Recurse -Force
+    & $script:SetPublicTreeBaseFiles $path
+    foreach ($relativePath in $script:PublicTreeCleanupPaths) {
+        Set-TestTreeFile $path $relativePath "Legacy path slated for the approved cleanup.`n"
+    }
+}
+$script:PublicTreeCleanupPaths = $publicTreeCleanupPaths
+$script:PreparePublicTreeCleanupBase = $preparePublicTreeCleanupBase
+$preparePublicTreeUnexpectedDeletionBase = {
+    param($path)
+    & $script:PreparePublicTreeCleanupBase $path
+    Set-TestTreeFile $path 'unexpected-legacy.md' "Not approved for deletion.`n"
 }
 $commitIndexEntries = {
     param([string]$Path, [string[]]$Entries)
@@ -355,7 +416,7 @@ $commitIndexEntries = {
     if ($LASTEXITCODE -ne 0) { throw 'Unable to commit index-only candidate.' }
 }
 
-Invoke-PullRequestCase -Name 'public tree sync allows README and intune changes' `
+Invoke-PullRequestCase -Name 'future public tree sync allows README and intune changes' `
     -ShouldPass $true `
     -ExpectedMessage 'Validating public tree sync pull request' `
     -PrepareBase $preparePublicTreeBase `
@@ -367,6 +428,65 @@ Invoke-PullRequestCase -Name 'public tree sync allows README and intune changes'
         New-Item -ItemType Directory -Path (Join-Path $path 'intune\compliance') -Force | Out-Null
         Write-Utf8Lf (Join-Path $path 'intune\compliance\new-policy.md') "# Synthetic compliance guidance`n"
         Remove-Item -LiteralPath (Join-Path $path 'intune\baseline\retired.md')
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync allows the exact one-time legacy cleanup set' `
+    -ShouldPass $true `
+    -ExpectedMessage 'Validating public tree sync pull request' `
+    -PrepareBase $preparePublicTreeCleanupBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        foreach ($relativePath in $script:PublicTreeCleanupPaths) {
+            Remove-Item -LiteralPath (Join-Path $path $relativePath.Replace('/', [System.IO.Path]::DirectorySeparatorChar)) -Force
+        }
+        Write-Utf8Lf (Join-Path $path 'README.md') "# Clean public README`n"
+        Write-Utf8Lf (Join-Path $path 'intune\baseline\existing.json') "{`n  `"fixtureOnly`": false`n}`n"
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects an unapproved extra cleanup deletion' `
+    -ExpectedMessage 'exact one-time approved cleanup set' `
+    -PrepareBase $preparePublicTreeUnexpectedDeletionBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        foreach ($relativePath in $script:PublicTreeCleanupPaths) {
+            Remove-Item -LiteralPath (Join-Path $path $relativePath.Replace('/', [System.IO.Path]::DirectorySeparatorChar)) -Force
+        }
+        Remove-Item -LiteralPath (Join-Path $path 'unexpected-legacy.md') -Force
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects an unexpected cleanup addition' `
+    -ExpectedMessage "outside the approved public root" `
+    -PrepareBase $preparePublicTreeCleanupBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        foreach ($relativePath in $script:PublicTreeCleanupPaths) {
+            Remove-Item -LiteralPath (Join-Path $path $relativePath.Replace('/', [System.IO.Path]::DirectorySeparatorChar)) -Force
+        }
+        Write-Utf8Lf (Join-Path $path 'unexpected-public.md') "Not in the public root allowlist.`n"
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects changing an approved legacy file instead of deleting it' `
+    -ExpectedMessage "Public tree sync changed prohibited path '.gitattributes'" `
+    -PrepareBase $preparePublicTreeCleanupBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        foreach ($relativePath in $script:PublicTreeCleanupPaths | Where-Object { $_ -cne '.gitattributes' }) {
+            Remove-Item -LiteralPath (Join-Path $path $relativePath.Replace('/', [System.IO.Path]::DirectorySeparatorChar)) -Force
+        }
+        Write-Utf8Lf (Join-Path $path '.gitattributes') "Changed rather than deleted.`n"
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects LICENSE modification' `
+    -ExpectedMessage "Public tree sync changed prohibited path 'LICENSE'" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        Write-Utf8Lf (Join-Path $path 'LICENSE') "Modified synthetic license.`n"
     }
 
 Invoke-PullRequestCase -Name 'public tree sync rejects governance workflow change' `
@@ -388,6 +508,33 @@ Invoke-PullRequestCase -Name 'public tree sync rejects LICENSE deletion' `
         Remove-Item -LiteralPath (Join-Path $path 'LICENSE')
     }
 
+Invoke-PullRequestCase -Name 'public tree sync rejects issue template modification' `
+    -ExpectedMessage "Public tree sync changed prohibited path '.github/ISSUE_TEMPLATE/bug_report.yml'" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        Write-Utf8Lf (Join-Path $path '.github\ISSUE_TEMPLATE\bug_report.yml') "Modified issue template.`n"
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects issue template deletion' `
+    -ExpectedMessage "Public tree sync changed prohibited path '.github/ISSUE_TEMPLATE/config.yml'" `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        Remove-Item -LiteralPath (Join-Path $path '.github\ISSUE_TEMPLATE\config.yml')
+    }
+
+Invoke-PullRequestCase -Name 'public tree sync rejects adding an issue template' `
+    -ExpectedMessage 'must preserve LICENSE and every .github/ISSUE_TEMPLATE/** path byte-for-byte' `
+    -PrepareBase $preparePublicTreeBase `
+    -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
+    -Mutate {
+        param($path)
+        Write-Utf8Lf (Join-Path $path '.github\ISSUE_TEMPLATE\unexpected.yml') "name: Unexpected template`n"
+    }
+
 Invoke-PullRequestCase -Name 'public tree sync rejects unrelated file change' `
     -ExpectedMessage "Public tree sync changed prohibited path 'governance-source.md'" `
     -PrepareBase $preparePublicTreeBase `
@@ -403,10 +550,7 @@ Invoke-PullRequestCase -Name 'public tree sync rejects generated catalog change'
     -Title $publicTreeTitle -Body $publicTreeBody -HeadRef 'publication/public-tree' `
     -Mutate {
         param($path)
-        $catalogPath = Join-Path $path 'catalog.json'
-        $catalog = Get-Content $catalogPath -Raw | ConvertFrom-Json
-        $catalog.generatedAt = '2026-01-02T00:00:00Z'
-        Write-Utf8Lf $catalogPath (($catalog | ConvertTo-Json -Depth 20) + "`n")
+        Write-Utf8Lf (Join-Path $path 'catalog.json') "{`n  `"generatedAt`": `"2026-01-02T00:00:00Z`"`n}`n"
     }
 
 Invoke-PullRequestCase -Name 'public tree sync rejects README deletion' `
