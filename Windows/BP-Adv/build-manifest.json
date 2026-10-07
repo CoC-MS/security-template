@@ -1,0 +1,25 @@
+{
+    "schemaVersion":  "2.0",
+    "platform":  "Windows",
+    "edition":  "Adv",
+    "licence":  "BP",
+    "rootDirectory":  ".",
+    "sharedAndUnclassifiedIncluded":  false,
+    "unknownPlatformFiles":  [
+
+                             ],
+    "files":  [
+                  "SettingsCatalog/BP – ALSO – HI – Adv – v3.0 - Windows - Device Security   -  Local Security Policies - D.json",
+                  "SettingsCatalog/BP – ALSO – HI – ADV – v3.2- Windows - Microsoft Accounts- Configuration - D.json",
+                  "SettingsCatalog/BP – ALSO – HI – Adv – v3.3 - Windows - Credential Management  - Passwordless  - D.json",
+                  "SettingsCatalog/BP – ALSO – HI – Advanced – v3.4 - Windows -WDACAppControl- Only Allow Microsoft apps and Intune Apps - D.json",
+                  "SettingsCatalog/BP – ALSO – LI – Adv – v1.0 - Windows - EPM - Elevation Settings - Default (Local Admins) - U.json",
+                  "SettingsCatalog/BP – ALSO – LI – Adv – v1.1 – Windows – Windows Hello for Business - Cloud Kerberos Trust - D.json",
+                  "SettingsCatalog/BP – ALSO – LI – Adv – v3.2- Windows - Device Security - Windows Subsystem for Linux - D.json",
+                  "SettingsCatalog/BP – ALSO – LI – Adv – v3.4 – Windows – Device Security - Windows Sandbox - D.json",
+                  "SettingsCatalog/BP – ALSO – MI – Adv – v1.0 – Windows – Device Config - Disc Cleanup 365 Days - D.json",
+                  "SettingsCatalog/BP – ALSO – MI – Adv – v1.0 – Windows – Device Config - Wednesday Scheduled Reboot 0000 - D.json",
+                  "SettingsCatalog/BP – ALSO – MI – Adv – v3.5 – Windows – Device Security - User Rights - U.json",
+                  "SettingsCatalog/BP – ALSO – MI – Adv – v3.6 - Windows - Defender Antivirus   -  Additional Configuration - D.json"
+              ]
+}

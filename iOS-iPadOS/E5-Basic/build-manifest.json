@@ -1,0 +1,21 @@
+{
+    "schemaVersion":  "2.0",
+    "platform":  "iOS-iPadOS",
+    "edition":  "Basic",
+    "licence":  "E5",
+    "rootDirectory":  ".",
+    "sharedAndUnclassifiedIncluded":  false,
+    "unknownPlatformFiles":  [
+
+                             ],
+    "files":  [
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – [iOSiPadOS - BYOD] Auto Enrollment to MDE.json",
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – iOS - Device Features - SSO.json",
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – iOS - Device Restriction - Block Gaming.json",
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – iOS - Devices Restrict - block Cloud sync.json",
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – iOS - Devices Restrictions - Block viewing corporate documents.json",
+                  "SettingsCatalog/BP – ALSO – LI – Basic – iOS - Disable VPN Creation.json",
+                  "SettingsCatalog/BP – ALSO – LI – Basic – iOS - Require Passcode \u0026 length.json",
+                  "UpdatePolicies/BP – ALSO – LI – Basic – iOS iPadOS - BYOD - Update policy.json"
+              ]
+}

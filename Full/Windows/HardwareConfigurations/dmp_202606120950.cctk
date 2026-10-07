@@ -1,0 +1,11 @@
+[cctk]
+CapsuleFirmwareUpdate=Enabled
+FirmwareTamperDet=Silent
+FirmwareTpm=Enabled
+TpmActivation=Enabled
+BiosLogClear=Keep
+PowerLogClear=Keep
+ThermalLogClear=Keep
+MSUefiCA=Enabled
+SecureBoot=Enabled
+SecureBootMode=DeployedMode

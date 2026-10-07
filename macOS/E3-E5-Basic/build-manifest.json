@@ -1,0 +1,37 @@
+{
+    "schemaVersion":  "2.0",
+    "platform":  "macOS",
+    "edition":  "Basic",
+    "licence":  "E3-E5",
+    "rootDirectory":  ".",
+    "sharedAndUnclassifiedIncluded":  false,
+    "unknownPlatformFiles":  [
+
+                             ],
+    "files":  [
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – [MacOs]- Update profile.json",
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – v1.0– MacOS – Device Configuration - MDE Accessibility Settings - D.json",
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – v1.0– MacOS – Device Configuration - MDE Auto Onboarding  - D.json",
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – v1.0– MacOS – Device Configuration - MDE Background Services  - D.json",
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – v1.0– MacOS – Device Configuration - MDE Full Disk Access- D.json",
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – v1.0– MacOS – Device Configuration - MDE Network Filter - D.json",
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – v1.0– MacOS – Device Configuration - MDE Notifications  - D.json",
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – v1.0– MacOS – Device Configuration - MDE -Offboarding package - 18.08 - D.json",
+                  "DeviceConfiguration/BP – ALSO – LI – Basic – v1.0– MacOS – Device Configuration - MDE Settings - D.json",
+                  "SettingsCatalog/BP – ALSO – HI – Basic – v1.0– MacOS – Device Configuration - Restrictions - D.json",
+                  "SettingsCatalog/BP – ALSO – HI – Basic – v1.0– MacOS – Microsoft Edge  - Password Management - D.json",
+                  "SettingsCatalog/BP – ALSO – LI – Basic – v1.0– MacOS – Device Configuration -  Onedrive Service \u0026 Access - D.json",
+                  "SettingsCatalog/BP – ALSO – LI – Basic – v1.0– MacOS – Device Configuration -  Updates policy - D.json",
+                  "SettingsCatalog/BP – ALSO – LI – Basic – v1.0– MacOS – Device Configuration - MDE System Extensions - D.json",
+                  "SettingsCatalog/BP – ALSO – LI – Basic – v1.0– MacOS – Device Configuration - Microsoft Apps Update policy - D.json",
+                  "SettingsCatalog/BP – ALSO – LI – Basic – v1.0– MacOS – Microsoft Edge  - Profiles, Sign-In and Sync  - U .json",
+                  "SettingsCatalog/BP – ALSO – LI – Basic – v1.0– MacOS – Microsoft Edge  - Updates  - U .json",
+                  "SettingsCatalog/BP – ALSO – LI – Basic – v1.0– MacOS – Onedrive-  Mapping, known folder and backup - U.json",
+                  "SettingsCatalog/BP – ALSO – MI – Basic – v1.0– MacOS – Antivirus - MDE Config  - D.json",
+                  "SettingsCatalog/BP – ALSO – MI – Basic – v1.0– MacOS – Device Configuration -  Accounts and Login - D.json",
+                  "SettingsCatalog/BP – ALSO – MI – Basic – v1.0– MacOS – Disk Encryption  - FileVault  - D.json",
+                  "SettingsCatalog/BP – ALSO – MI – Basic – v1.0– MacOS – Firewall  - Gatekeeper  - D.json",
+                  "SettingsCatalog/BP – ALSO – MI – Basic – v1.0– MacOS – Microsoft Edge  - Extensions  - U.json",
+                  "SettingsCatalog/BP – ALSO – MI – Basic – v1.0– MacOS – Microsoft Edge  - Security - D.json"
+              ]
+}

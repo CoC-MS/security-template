@@ -1,0 +1,14 @@
+{
+    "schemaVersion":  "2.0",
+    "platform":  "Android",
+    "edition":  "Adv",
+    "licence":  "E5",
+    "rootDirectory":  ".",
+    "sharedAndUnclassifiedIncluded":  false,
+    "unknownPlatformFiles":  [
+
+                             ],
+    "files":  [
+
+              ]
+}
