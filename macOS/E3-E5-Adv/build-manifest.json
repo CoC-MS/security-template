@@ -1,0 +1,14 @@
+{
+    "schemaVersion":  "2.0",
+    "platform":  "macOS",
+    "edition":  "Adv",
+    "licence":  "E3-E5",
+    "rootDirectory":  ".",
+    "sharedAndUnclassifiedIncluded":  false,
+    "unknownPlatformFiles":  [
+
+                             ],
+    "files":  [
+                  "SettingsCatalog/BP – ALSO – MI – Adv – v1.0– MacOS – SSO - Configuration - D.json"
+              ]
+}

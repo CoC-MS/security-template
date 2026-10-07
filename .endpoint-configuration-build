@@ -1,0 +1,31 @@
+{
+    "schemaVersion":  "2.0",
+    "packages":  [
+                     "Android/BP-Basic",
+                     "Android/E3-E5-Basic",
+                     "Android/E5-Basic",
+                     "Android/BP-Adv",
+                     "Android/E3-E5-Adv",
+                     "Android/E5-Adv",
+                     "iOS-iPadOS/BP-Basic",
+                     "iOS-iPadOS/E3-E5-Basic",
+                     "iOS-iPadOS/E5-Basic",
+                     "iOS-iPadOS/BP-Adv",
+                     "iOS-iPadOS/E3-E5-Adv",
+                     "iOS-iPadOS/E5-Adv",
+                     "macOS/BP-Basic",
+                     "macOS/E3-E5-Basic",
+                     "macOS/E5-Basic",
+                     "macOS/BP-Adv",
+                     "macOS/E3-E5-Adv",
+                     "macOS/E5-Adv",
+                     "Shared",
+                     "Windows/BP-Basic",
+                     "Windows/E3-E5-Basic",
+                     "Windows/E5-Basic",
+                     "Windows/BP-Adv",
+                     "Windows/E3-E5-Adv",
+                     "Windows/E5-Adv",
+                     "Full"
+                 ]
+}
